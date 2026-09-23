@@ -24,11 +24,13 @@ generates illustrations (Nano Banana Flash) and music (Lyria).
 | 4. Cut footage and voice | `python3 scripts/prepare-footage.py <camera.mov>` | `public/footage/speaker.mp4`, `public/audio/voice.wav` |
 | 5. Generate illustrations | `node scripts/gen-image.mjs <name> 1:1 "<subject>"` | `public/img/<name>.jpg` |
 | 6. Key out image backgrounds | see below | `public/img/clean/<name>.png` |
-| 7. Write the graphics | edit `html/clips.js` | one `clip()` per beat |
+| 7. Write the graphics | one file per graphic: `html/clips/<key>.js` (see `_example-*.js`) | several can be written at once |
 | 8. Check a frame | `node scripts/render-html.mjs <scene> --stills 4 --outdir /tmp/s` | PNG stills |
 | 9. Render graphics to MP4 | `./scripts/render-all.sh` | `public/clips/*.mp4` |
 | 10. Generate music | `node scripts/gen-music.mjs <name> default "<prompt>"` (uses the music model chosen in settings) | `public/audio/<name>.mp3` |
 | 11. Build the music bed | `python3 scripts/music-mix.py <track> -21` | `public/audio/music_mix.wav` |
+| Research the web | `python3 scripts/web-search.py "<question>"` | an answer with its sources |
+| Capture a page | `node scripts/web-capture.mjs shot\|scroll <url> public/web/<name>.png\|mp4 --highlight "words"` | a still, or a smooth scroll with the words highlighted |
 | 12. Render the episode | `./scripts/render-final.sh out/episode.mp4` | the finished MP4 |
 
 Step 6, once per batch of images, so illustrations sit on the off-white
@@ -54,7 +56,10 @@ with `.venv/bin/python`.
 - `html/scenes.js` — the brand library: intro and outro scenes, XKDR pixel logo,
   coral braces, pixel type, helpers. Shared across episodes; edit only to change
   the series look.
-- `html/clips.js` — this episode's graphics. The file you actually write.
+- `html/clips.js` — shared helpers for this episode's graphics (`XKDR_CLIP`, `XKDR_KIT`).
+- `html/clips/<key>.js` — the graphics themselves, one file each. Graphics are
+  seekable HTML animations: GSAP (with DrawSVG, MorphSVG, MotionPath, SplitText),
+  d3 and anything HTML/CSS/SVG/canvas can do, driven by the clip's timeline.
 - `html/assets.js` — logo geometry and social icons, extracted from xkdr.org.
 - `src/BigIdeas.tsx` — the Remotion edit: intro, footage, graphics, lower third,
   outro, audio.

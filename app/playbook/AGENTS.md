@@ -22,6 +22,12 @@ a reference. The judgment is yours.
   it up**. Fetch the site, pull its stylesheet, find the colour variables and
   font families, download the logo files. Get the palette from the source, not
   from memory. People notice when the video matches their brand exactly.
+- **Research the talk.** Once you have the transcript, send a `research`
+  subagent (see 3b) to look up the speaker and anything worth checking or
+  showing: their role and organisation from an official page, projects,
+  papers or sites they mention. Ask it to capture the pages worth showing —
+  a still or a smooth scrolling recording with the key words highlighted —
+  so a beat can show the real source. Run it in parallel with your own work.
 - Check `ASSETS.md`: anything in the brand or project bins was put there on
   purpose. Use it before generating replacements.
 - Anything you can't determine — the speaker's name and organisation, the title,
@@ -60,6 +66,8 @@ frame, not a heading with a lonely shape under it.
 - **Illustrations, generously.** Generate them in one consistent style derived
   from the brand palette (`scripts/gen-image.mjs`). Key their backgrounds out so
   they sit on the page instead of in a grey box. Show them big.
+- **Graphics are HTML.** Each one is a seekable animation in
+  `html/clips/<key>.js`; GRAPHICS.md has the rules and the toolkit.
 - **Time to the words.** Each element enters when its word is spoken —
   `scripts/find-words.py` gives exact timestamps.
 - **Keep the speaker.** Graphics sit beside the speaker, never over them.
@@ -71,6 +79,38 @@ frame, not a heading with a lonely shape under it.
 - **Honesty.** A chart with numbers the speaker didn't give carries an
   "Illustrative" label. A quote card uses the exact words from the transcript.
   Don't generate maps of real countries — generated borders are unreliable.
+
+## 3b. Work as a team: subagents
+
+You lead. Once the plan is approved, hand self-contained jobs to subagents
+with the `task` tool — **several `task` calls in the same step run in
+parallel**, so a whole set of graphics is built at once.
+
+- `graphics` — one per graphic. It designs, animates (HTML/CSS/SVG, GSAP,
+  d3), renders stills and checks them, writing only `html/clips/<key>.js`.
+- `research` — web lookups and page captures (see RESEARCH.md).
+
+Before delegating graphics, do the shared work yourself: transcript, sync,
+footage, palette and fonts from the brand, `episode.json`, and the beat sheet
+with each clip's key, mode and start/end (back to back, no overlaps). Then
+write each brief so it stands alone — the subagent sees nothing but the
+brief and the workspace:
+
+- the key, `half`, start and end in source seconds;
+- what is said, with the word timings from `scripts/find-words.py`;
+- the one idea it must land, and the visual you have in mind (a chart with
+  these numbers, a diagram with these parts, a captured page to frame…);
+- palette (hex), fonts, and asset files to use (`public/img/...`, `public/web/...`);
+- "Read GRAPHICS.md first."
+
+Give each task a short description naming the graphic ("CO2 chart",
+"Satellite reveal") — the person sees it in the app. Up to six at a time.
+When they report back: `node scripts/export-clips.mjs` (it lists broken files
+and overlaps), look at a still of each yourself, send a subagent back with
+specific notes if one isn't good enough, then render everything.
+
+Don't delegate what needs the whole picture: the plan, the edit, the final
+render, or talking to the person.
 
 ## 4. Look at your own work
 

@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Elyps AI</title>
+<meta name="description" content="An open-source AI video editor. Drop in raw footage and say what you want: a team of AI agents researches, cuts, animates and checks every frame, sandboxed on your computer.">
+<meta property="og:title" content="Elyps AI — you bring the raw footage, it does the rest">
+<meta property="og:description" content="An open-source, agentic AI video editor that runs sandboxed on your computer.">
+<meta property="og:image" content="https://ayushpatnaikgit.github.io/Elyps-AI/frame-edit.jpg">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --bg:#fbfbfd; --surface:#ffffff; --ink:#1d1d1f; --ink-2:#3d3a4a; --muted:#6e6e73; --line:#e6e4ee;
+    --brand:#6d3fe0; --brand-2:#9d7bff; --brand-tint:#f1ecff; --ok:#0b6b43; --ok-tint:#e3f5ed; --dark:#16141f;
+    --shadow:0 30px 80px rgba(30,20,70,.12), 0 0 0 1px rgba(0,0,0,.05);
+    color-scheme: light;
+  }
+  * { box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:400 18px/1.55 "Inter Tight", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing:antialiased; overflow-x:hidden; }
+  a { color:var(--brand); text-decoration:none; }
+  a:hover { text-decoration:underline; }
+  img, video { max-width:100%; display:block; }
+  .wrap { width:min(1160px, calc(100% - 32px)); margin:0 auto; }
+  h1, h2, h3 { letter-spacing:-0.035em; line-height:1.04; margin:0; }
+  h2 { font-size:clamp(34px, 5vw, 56px); font-weight:800; }
+  h3 { font-size:22px; font-weight:700; letter-spacing:-0.02em; line-height:1.2; }
+  p.lead { font-size:clamp(18px, 2.2vw, 22px); color:var(--muted); font-weight:500; letter-spacing:-0.01em; max-width:720px; }
+  .eyebrow { display:inline-flex; align-items:center; gap:8px; font:700 13px "Inter Tight"; letter-spacing:.14em; text-transform:uppercase; color:var(--brand); }
+  .eyebrow::before { content:''; width:8px; height:8px; border-radius:2px; background:var(--brand); }
+  section { padding:clamp(72px, 10vw, 128px) 0; }
+
+  /* nav */
+  nav { position:sticky; top:0; z-index:20; background:rgba(251,251,253,.82); backdrop-filter:saturate(1.6) blur(14px); -webkit-backdrop-filter:saturate(1.6) blur(14px); border-bottom:1px solid transparent; transition:border-color .3s; }
+  nav.stuck { border-bottom-color:var(--line); }
+  nav .wrap { display:flex; align-items:center; gap:24px; height:64px; }
+  .brand { display:flex; align-items:center; gap:10px; font:800 20px "Inter Tight"; letter-spacing:-0.03em; color:var(--ink); }
+  .brand img { width:30px; height:30px; }
+  .brand span { color:var(--brand); }
+  nav .links { margin-left:auto; display:flex; gap:26px; font:600 15px "Inter Tight"; }
+  nav .links a { color:var(--ink-2); }
+  .btn { display:inline-flex; align-items:center; gap:9px; height:46px; padding:0 20px; border-radius:999px; font:700 16px "Inter Tight"; border:0; cursor:pointer; background:var(--dark); color:#fff; text-decoration:none!important; transition:transform .2s, box-shadow .2s; }
+  .btn:hover { transform:translateY(-1px); box-shadow:0 10px 24px rgba(22,20,31,.22); }
+  .btn.ghost { background:transparent; color:var(--ink); box-shadow:inset 0 0 0 1.5px var(--line); }
+  .btn.small { height:38px; padding:0 16px; font-size:14px; }
+  @media (max-width:760px) { nav .links { display:none; } nav .btn.small { margin-left:auto; } }
+
+  /* hero */
+  .hero { padding:clamp(56px, 9vw, 110px) 0 40px; text-align:center; }
+  .hero h1 { font-size:clamp(46px, 8.4vw, 104px); font-weight:800; letter-spacing:-0.05em; line-height:.98; }
+  .hero h1 em { font-style:normal; background:linear-gradient(92deg, var(--brand), var(--brand-2)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .hero p.lead { margin:26px auto 0; }
+  .hero .cta { margin-top:34px; display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+  .pills { margin:26px auto 0; display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+  .pills span { font:600 14px "Inter Tight"; color:var(--ink-2); background:#f0eef6; padding:7px 13px; border-radius:999px; }
+  .rise { opacity:0; transform:translateY(22px) scale(.985); transition:opacity .9s cubic-bezier(.2,.7,.2,1), transform .9s cubic-bezier(.2,.7,.2,1); }
+  .rise.in { opacity:1; transform:none; }
+  .d1 { transition-delay:.08s; } .d2 { transition-delay:.16s; } .d3 { transition-delay:.24s; } .d4 { transition-delay:.32s; }
+  @media (prefers-reduced-motion:reduce) { .rise { opacity:1; transform:none; transition:none; } }
+
+  /* demo window */
+  .window { margin:56px auto 0; max-width:1080px; border-radius:18px; overflow:hidden; background:#fff; box-shadow:var(--shadow); }
+  .chrome { height:38px; display:flex; align-items:center; gap:7px; padding:0 14px; background:#f1f0f5; border-bottom:1px solid rgba(0,0,0,.05); }
+  .chrome i { width:11px; height:11px; border-radius:50%; display:block; }
+  .chrome .url { margin:0 auto; font:500 13px "Inter Tight"; color:var(--muted); background:#fff; padding:4px 14px; border-radius:7px; }
+  .player { position:relative; background:#000; aspect-ratio:16/9; }
+  .player video { width:100%; height:100%; object-fit:cover; }
+  .sound { position:absolute; right:14px; bottom:14px; display:inline-flex; align-items:center; gap:8px; height:38px; padding:0 14px; border-radius:999px; border:0; cursor:pointer; background:rgba(22,20,31,.78); color:#fff; font:600 14px "Inter Tight"; backdrop-filter:blur(6px); }
+
+  /* before / after */
+  .compare { position:relative; margin-top:44px; border-radius:18px; overflow:hidden; box-shadow:var(--shadow); aspect-ratio:16/9; user-select:none; touch-action:pan-y; cursor:ew-resize; background:#000; }
+  .compare img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .compare .after { clip-path:inset(0 0 0 var(--x, 50%)); }
+  .compare .handle { position:absolute; top:0; bottom:0; left:var(--x, 50%); width:3px; margin-left:-1.5px; background:#fff; box-shadow:0 0 0 1px rgba(0,0,0,.08); }
+  .compare .handle::after { content:'⟷'; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:48px; height:48px; border-radius:50%; background:#fff; display:grid; place-items:center; font:700 20px "Inter Tight"; color:var(--ink); box-shadow:0 8px 24px rgba(0,0,0,.25); }
+  .compare .tag { position:absolute; top:14px; font:700 12px "Inter Tight"; letter-spacing:.12em; text-transform:uppercase; color:#fff; background:rgba(22,20,31,.72); padding:6px 11px; border-radius:999px; }
+  .compare .tag.l { left:14px; } .compare .tag.r { right:14px; }
+  blockquote { margin:40px auto 0; max-width:860px; padding:26px 30px; border-radius:16px; background:#fff; box-shadow:0 1px 0 rgba(0,0,0,.04), 0 0 0 1px var(--line); font:500 clamp(18px, 2.2vw, 22px)/1.5 "Inter Tight"; color:var(--ink-2); }
+  blockquote b { display:block; font:700 13px "Inter Tight"; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:10px; }
+
+  /* the team */
+  .team { margin-top:56px; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.25fr); gap:40px; align-items:center; }
+  @media (max-width:900px) { .team { grid-template-columns:1fr; } }
+  .steps-list { display:grid; gap:14px; }
+  .steps-list > div { display:grid; grid-template-columns:36px 1fr; gap:14px; align-items:start; }
+  .steps-list .n { width:36px; height:36px; border-radius:10px; background:var(--brand-tint); color:var(--brand); display:grid; place-items:center; font:800 16px "Inter Tight"; }
+  .steps-list p { margin:4px 0 0; color:var(--muted); font-size:16px; }
+  .board { position:relative; background:#fff; border-radius:20px; box-shadow:var(--shadow); padding:22px; overflow:hidden; }
+  .lead-card { display:flex; align-items:center; gap:14px; padding:14px 16px; border-radius:14px; background:var(--dark); color:#fff; }
+  .lead-card .av { width:40px; height:40px; border-radius:12px; background:linear-gradient(135deg, var(--brand), var(--brand-2)); display:grid; place-items:center; flex:none; }
+  .lead-card b { display:block; font-size:17px; } .lead-card span { font-size:14px; color:#b9b4cf; }
+  .wires { height:30px; margin:0 26px; border-left:2px dashed #d9d3f2; border-right:2px dashed #d9d3f2; border-bottom:2px dashed #d9d3f2; border-radius:0 0 12px 12px; }
+  .subs { margin-top:14px; display:grid; gap:10px; }
+  .sub { display:grid; grid-template-columns:18px 1fr auto; gap:12px; align-items:center; padding:11px 14px; border-radius:12px; background:var(--brand-tint); }
+  .sub .st { width:16px; height:16px; border-radius:50%; border:2.4px solid #d3c8f7; border-top-color:var(--brand); animation:spin .9s linear infinite; }
+  .sub.done { background:#fff; box-shadow:inset 0 0 0 1px var(--line); }
+  .sub.done .st { animation:none; border:0; background:var(--ok); -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1.4 14.2-4-4 1.4-1.4 2.6 2.6 5.6-5.6 1.4 1.4z'/%3E%3C/svg%3E") center/contain no-repeat; mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1.4 14.2-4-4 1.4-1.4 2.6 2.6 5.6-5.6 1.4 1.4z'/%3E%3C/svg%3E") center/contain no-repeat; }
+  .sub b { font-size:15.5px; } .sub .act { display:block; font-size:13.5px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sub .bar { width:74px; height:5px; border-radius:3px; background:#e4dcfb; overflow:hidden; }
+  .sub .bar i { display:block; height:100%; width:0; background:var(--brand); border-radius:3px; }
+  .sub.done .bar i { background:var(--ok); }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  @media (prefers-reduced-motion:reduce) { .sub .st { animation:none; } }
+
+  /* features */
+  .grid { margin-top:52px; display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:18px; }
+  @media (max-width:960px) { .grid { grid-template-columns:repeat(2, minmax(0,1fr)); } }
+  @media (max-width:620px) { .grid { grid-template-columns:1fr; } }
+  .card { background:#fff; border-radius:18px; padding:26px; box-shadow:0 0 0 1px var(--line); transition:box-shadow .3s, transform .3s; }
+  .card:hover { transform:translateY(-3px); box-shadow:0 20px 50px rgba(30,20,70,.1), 0 0 0 1px var(--line); }
+  .card .ic { width:44px; height:44px; border-radius:12px; background:var(--brand-tint); color:var(--brand); display:grid; place-items:center; margin-bottom:18px; }
+  .card p { margin:8px 0 0; color:var(--muted); font-size:16px; }
+  .card code, p code { font:500 .88em "JetBrains Mono", monospace; background:#f0eef6; padding:2px 6px; border-radius:6px; color:var(--ink-2); }
+
+  /* graphics gallery: a slow marquee */
+  .marquee { margin-top:48px; overflow:hidden; mask-image:linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); -webkit-mask-image:linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+  .marquee .track { display:flex; gap:18px; width:max-content; animation:slide 60s linear infinite; }
+  .marquee:hover .track { animation-play-state:paused; }
+  .marquee img { flex:none; max-width:none; width:min(460px, 78vw); aspect-ratio:16/9; object-fit:cover; border-radius:14px; box-shadow:0 14px 34px rgba(30,20,70,.12); }
+  @keyframes slide { to { transform:translateX(calc(-50% - 9px)); } }
+  @media (prefers-reduced-motion:reduce) { .marquee .track { animation:none; } .marquee { overflow-x:auto; } }
+  .credit { margin-top:16px; font-size:14px; color:var(--muted); text-align:center; }
+
+  /* install */
+  .install { margin-top:44px; display:grid; grid-template-columns:minmax(0,1.3fr) minmax(0,1fr); gap:22px; }
+  @media (max-width:900px) { .install { grid-template-columns:1fr; } }
+  .term { background:var(--dark); color:#e9e4ff; border-radius:18px; padding:22px; box-shadow:0 30px 70px rgba(20,10,50,.25); min-width:0; }
+  .tabs { display:flex; gap:6px; margin-bottom:16px; }
+  .tabs button { border:0; cursor:pointer; font:600 14px "Inter Tight"; padding:8px 14px; border-radius:999px; background:transparent; color:#a49dc4; }
+  .tabs button.on { background:#2a2640; color:#fff; }
+  .cmd { display:flex; align-items:center; gap:12px; background:#201d2e; border-radius:12px; padding:14px 14px 14px 18px; }
+  .cmd code { flex:1; min-width:0; overflow-x:auto; white-space:nowrap; font:500 14.5px "JetBrains Mono", monospace; color:#e9e4ff; scrollbar-width:thin; }
+  .cmd code::before { content:'$ '; color:#6b6589; }
+  .copy { flex:none; border:0; cursor:pointer; height:34px; padding:0 13px; border-radius:9px; background:#3a3558; color:#fff; font:600 13px "Inter Tight"; }
+  .term ol { margin:18px 0 0; padding-left:20px; color:#b9b4cf; font-size:15.5px; }
+  .term ol li { margin:6px 0; } .term a { color:#b9a3ff; }
+  .side { display:grid; gap:14px; align-content:start; }
+  .cost { display:flex; justify-content:space-between; gap:16px; align-items:baseline; padding:16px 20px; background:#fff; border-radius:14px; box-shadow:0 0 0 1px var(--line); }
+  .cost span { color:var(--muted); font-size:16px; } .cost b { font-size:22px; letter-spacing:-0.02em; white-space:nowrap; }
+
+  /* close */
+  .close { text-align:center; }
+  .close h2 { font-size:clamp(40px, 7vw, 84px); }
+  .close h2 span { color:var(--brand); }
+  footer { padding:40px 0 56px; border-top:1px solid var(--line); color:var(--muted); font-size:14.5px; }
+  footer .wrap { display:flex; gap:20px; flex-wrap:wrap; justify-content:space-between; }
+</style>
+</head>
+<body>
+
+<nav id="nav"><div class="wrap">
+  <a class="brand" href="#top"><img src="logo.svg" alt="">Elyps <span>AI</span></a>
+  <div class="links"><a href="#how">How it works</a><a href="#features">What it does</a><a href="#install">Install</a><a href="https://github.com/ayushpatnaikgit/Elyps-AI">GitHub</a></div>
+  <a class="btn small" href="#install">Get Elyps</a>
+</div></nav>
+
+<header class="hero" id="top"><div class="wrap">
+  <div class="rise"><span class="eyebrow">Open-source AI video editor</span></div>
+  <h1 class="rise d1" style="margin-top:22px">You bring the raw footage.<br><em>It does the rest.</em></h1>
+  <p class="lead rise d2">Drop in a recorded talk, photos and a logo, and say what you want. A team of AI agents researches, cuts, animates and checks every frame, then hands you a finished, on-brand video. It runs sandboxed on your computer, with your own Gemini key.</p>
+  <div class="cta rise d3">
+    <a class="btn" href="#install"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M6 10l6 6 6-6M4 20h16"/></svg>Install in one line</a>
+    <a class="btn ghost" href="https://github.com/ayushpatnaikgit/Elyps-AI"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.36-3.88-1.36-.52-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.7 5.4-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5z"/></svg>View on GitHub</a>
+  </div>
+  <div class="pills rise d4"><span>Free &amp; open source (MIT)</span><span>Mac · Windows · Linux</span><span>About $1–4 per video</span></div>
+
+  <div class="window rise d4">
+    <div class="chrome"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span class="url">localhost:4322 · Elyps AI</span></div>
+    <div class="player">
+      <video id="demo" src="elyps-demo.mp4" poster="frame-edit.jpg" autoplay muted loop playsinline preload="metadata" aria-label="Elyps demo: files are dropped in, the agent plans and works, and the finished video plays"></video>
+      <button class="sound" id="sound" type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M16 9a5 5 0 0 1 0 6M19 6a9 9 0 0 1 0 12"/></svg><span>Play with sound</span></button>
+    </div>
+  </div>
+</div></header>
+
+<section id="example"><div class="wrap" style="text-align:center">
+  <span class="eyebrow rise">From this, to this</span>
+  <h2 class="rise d1" style="margin-top:16px">One message in.<br>A finished explainer out.</h2>
+  <div class="compare rise d2" id="compare" style="--x:50%" role="slider" aria-label="Drag to compare the raw footage with the edited video" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" tabindex="0">
+    <img src="frame-raw.jpg" alt="The raw interview footage">
+    <img class="after" src="frame-edit.jpg" alt="The edited frame: the speaker beside an animated graphic">
+    <span class="tag l">Raw footage</span><span class="tag r">Elyps edit</span>
+    <div class="handle"></div>
+  </div>
+  <blockquote class="rise"><b>The whole brief</b>“Turn this interview into a short explainer for our channel, Earth, Explained. Add graphics at the key ideas, a clean intro and outro, and soft music. Use our logo and its colours.”</blockquote>
+</div></section>
+
+<section id="how" style="background:#fff; border-top:1px solid var(--line); border-bottom:1px solid var(--line)"><div class="wrap">
+  <span class="eyebrow rise">How it works</span>
+  <h2 class="rise d1" style="margin-top:16px">A lead agent,<br>and a team of subagents.</h2>
+  <p class="lead rise d2" style="margin-top:20px">It works like a small studio. The lead agent understands the material and plans the edit with you. Then it hands each graphic, and any research, to its own subagent, and they all work at the same time.</p>
+  <div class="team">
+    <div class="steps-list rise">
+      <div><span class="n">1</span><div><h3>Understands everything</h3><p>Syncs the camera and the mic, transcribes every word, pulls your brand's colours from your logo or website, and looks up the speaker.</p></div></div>
+      <div><span class="n">2</span><div><h3>Plans with you</h3><p>Sends a beat sheet: what's said when, and the graphic for each idea. You approve it or redirect it, in plain words.</p></div></div>
+      <div><span class="n">3</span><div><h3>Builds in parallel</h3><p>Subagents research the web, capture pages, and write each animation as code, all at the same time.</p></div></div>
+      <div><span class="n">4</span><div><h3>Checks its own work</h3><p>Every graphic is rendered, looked at and fixed before it goes in. Then the lead renders the final 1080p video.</p></div></div>
+    </div>
+    <div class="board rise d2" id="board" aria-label="Animation: a lead agent hands work to four subagents, which finish one by one">
+      <div class="lead-card"><span class="av"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="13" height="14" rx="2"/><path d="M16 10l5-3v10l-5-3"/></svg></span><div><b>Lead agent</b><span id="leadAct">Planning the edit</span></div></div>
+      <div class="wires"></div>
+      <div class="subs" id="subs"></div>
+    </div>
+  </div>
+</div></section>
+
+<section id="features"><div class="wrap">
+  <span class="eyebrow rise">What it does</span>
+  <h2 class="rise d1" style="margin-top:16px">Everything an editor does.<br>Without the timeline.</h2>
+  <div class="grid">
+    <div class="card rise"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h10M4 17h13"/></svg></div><h3>Cuts, syncs and captions</h3><p>Lines up a separate mic with the camera, trims the silences, and times everything to a word-level transcript.</p></div>
+    <div class="card rise d1"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg></div><h3>Animated graphics, written as code</h3><p>Charts that draw themselves, diagrams that build as they're named. Each graphic is its own HTML, SVG and GSAP animation, timed to the words.</p></div>
+    <div class="card rise d2"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></div><h3>Researches the web</h3><p>Looks up the speaker and the claims in the talk, with sources. It captures pages as screenshots or smooth scrolling recordings, with the key line highlighted.</p></div>
+    <div class="card rise"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg></div><h3>Illustrations and music</h3><p>Draws illustrations in your brand's colours and composes a music bed that dips under the voice.</p></div>
+    <div class="card rise d1"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></div><h3>Change anything</h3><p>Click a graphic on the timeline and say what's different. Or message the agent while it works; it picks the note up at its next step.</p></div>
+    <div class="card rise d2"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div><h3>Sandboxed, and your key stays yours</h3><p>The agents run inside a container on your computer, as their own user. They reach Gemini through a local proxy and never see your API key.</p></div>
+  </div>
+
+  <div class="marquee rise" aria-label="Graphics Elyps made for the NASA example">
+    <div class="track">
+      <img src="gallery-1.jpg" alt=""><img src="gallery-2.jpg" alt=""><img src="gallery-3.jpg" alt=""><img src="gallery-4.jpg" alt=""><img src="gallery-5.jpg" alt=""><img src="gallery-6.jpg" alt="">
+      <img src="gallery-1.jpg" alt="" aria-hidden="true"><img src="gallery-2.jpg" alt="" aria-hidden="true"><img src="gallery-3.jpg" alt="" aria-hidden="true"><img src="gallery-4.jpg" alt="" aria-hidden="true"><img src="gallery-5.jpg" alt="" aria-hidden="true"><img src="gallery-6.jpg" alt="" aria-hidden="true">
+    </div>
+  </div>
+  <p class="credit">Frames from Elyps's edit of an interview with Dr. Lesley Ott, courtesy of <a href="https://svs.gsfc.nasa.gov/14553">NASA's Goddard Space Flight Center</a>. “Earth, Explained” is a made-up channel for the example. NASA does not endorse Elyps.</p>
+</div></section>
+
+<section id="install" style="background:#fff; border-top:1px solid var(--line); border-bottom:1px solid var(--line)"><div class="wrap">
+  <span class="eyebrow rise">Install</span>
+  <h2 class="rise d1" style="margin-top:16px">One line. Then drop in a video.</h2>
+  <p class="lead rise d2" style="margin-top:20px">Elyps runs in <a href="https://www.docker.com/products/docker-desktop/">Docker Desktop</a>, so everything it needs comes in one package. Give Docker 8 GB of memory in its Settings → Resources.</p>
+  <div class="install">
+    <div class="term rise">
+      <div class="tabs" role="tablist"><button class="on" data-os="unix" role="tab">Mac · Linux</button><button data-os="win" role="tab">Windows</button></div>
+      <div class="cmd"><code id="cmd">curl -fsSL https://raw.githubusercontent.com/ayushpatnaikgit/Elyps-AI/main/install.sh | sh</code><button class="copy" id="copy" type="button">Copy</button></div>
+      <ol>
+        <li>It opens Elyps in your browser.</li>
+        <li>Add a Gemini key from <a href="https://aistudio.google.com/apikey">aistudio.google.com/apikey</a> when it asks.</li>
+        <li>Drop in your footage and say what you want.</li>
+      </ol>
+    </div>
+    <div class="side rise d1">
+      <div class="cost"><span>A full edit of a 3–4 minute talk</span><b>≈ $1–4</b></div>
+      <div class="cost"><span>Each illustration</span><b>$0.07</b></div>
+      <div class="cost"><span>Each music track</span><b>$0.08</b></div>
+      <p style="margin:6px 4px 0; color:var(--muted); font-size:15.5px">You pay Google directly for Gemini usage; Elyps itself is free. The Usage page shows what each video cost.</p>
+    </div>
+  </div>
+</div></section>
+
+<section class="close"><div class="wrap">
+  <img class="rise" src="logo.svg" alt="" style="width:84px;margin:0 auto 26px">
+  <h2 class="rise d1">Elyps <span>AI</span></h2>
+  <p class="lead rise d2" style="margin:20px auto 0">You bring the raw footage. It does the rest.</p>
+  <div class="cta rise d3" style="margin-top:30px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap"><a class="btn" href="#install">Install Elyps</a><a class="btn ghost" href="https://github.com/ayushpatnaikgit/Elyps-AI">github.com/ayushpatnaikgit/Elyps-AI</a></div>
+</div></section>
+
+<footer><div class="wrap"><span>© 2026 Ayush Patnaik · MIT License</span><span><a href="https://github.com/ayushpatnaikgit/Elyps-AI">Source</a> · <a href="https://github.com/ayushpatnaikgit/Elyps-AI/issues">Report an issue</a></span></div></footer>
+
+<script>
+  // things rise into view as you reach them
+  const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: 0.12 });
+  document.querySelectorAll('.rise').forEach((el) => io.observe(el));
+  const nav = document.getElementById('nav');
+  addEventListener('scroll', () => nav.classList.toggle('stuck', scrollY > 8), { passive: true });
+
+  // demo: sound on request
+  const demo = document.getElementById('demo'), sound = document.getElementById('sound');
+  sound.onclick = () => { demo.muted = !demo.muted; if (!demo.muted) { demo.currentTime = 0; demo.play(); } sound.querySelector('span').textContent = demo.muted ? 'Play with sound' : 'Mute'; };
+
+  // before / after
+  const cmp = document.getElementById('compare');
+  const setX = (p) => { p = Math.max(0, Math.min(100, p)); cmp.style.setProperty('--x', p + '%'); cmp.setAttribute('aria-valuenow', Math.round(p)); };
+  let drag = false;
+  const at = (e) => { const r = cmp.getBoundingClientRect(); setX(((e.touches ? e.touches[0].clientX : e.clientX) - r.left) / r.width * 100); };
+  cmp.addEventListener('pointerdown', (e) => { drag = true; cmp.setPointerCapture(e.pointerId); at(e); });
+  cmp.addEventListener('pointermove', (e) => { if (drag) at(e); });
+  cmp.addEventListener('pointerup', () => { drag = false; });
+  cmp.addEventListener('keydown', (e) => { const v = parseFloat(getComputedStyle(cmp).getPropertyValue('--x')) || 50; if (e.key === 'ArrowLeft') setX(v - 5); if (e.key === 'ArrowRight') setX(v + 5); });
+  // a gentle sweep the first time it's seen, so people know it moves
+  new IntersectionObserver((es, o) => es.forEach((e) => { if (!e.isIntersecting || matchMedia('(prefers-reduced-motion: reduce)').matches) return; o.disconnect();
+    const t0 = performance.now(); const f = (now) => { const k = Math.min(1, (now - t0) / 2200); if (!drag) setX(50 + 28 * Math.sin(k * Math.PI * 2) * (1 - k)); if (k < 1) requestAnimationFrame(f); }; requestAnimationFrame(f);
+  }), { threshold: 0.5 }).observe(cmp);
+
+  // the team board: subagents pick up work, show what they're doing, and finish with a tick
+  const SUBS = [
+    ['Research', ['Searching the web: the speaker', 'Reading nasa.gov', 'Recording a scroll through nasa.gov', 'Highlighting her role']],
+    ['CO₂ chart', ['Reading NOAA’s Mauna Loa data', 'Writing the animation', 'Previewing the chart', 'Checking the frame']],
+    ['Satellite reveal', ['Drawing an illustration: satellite', 'Writing the animation', 'Previewing the reveal', 'Checking the frame']],
+    ['Feedback loop', ['Writing the animation', 'Drawing the diagram', 'Previewing the diagram', 'Checking the frame']],
+  ];
+  const LEAD = ['Planning the edit', 'Handing out 4 tasks', 'Waiting for the team', 'Placing graphics on the timeline', 'Rendering the final video'];
+  const subsEl = document.getElementById('subs'), leadAct = document.getElementById('leadAct');
+  subsEl.innerHTML = SUBS.map(([n]) => `<div class="sub"><span class="st"></span><div style="min-width:0"><b>${n}</b><span class="act">Waiting</span></div><span class="bar"><i></i></span></div>`).join('');
+  const rows = [...subsEl.children];
+  const CYCLE = 16000, speed = [1, 0.8, 0.9, 0.72];
+  const tick = (now) => {
+    const t = (now % CYCLE) / 1000;
+    leadAct.textContent = t < 1.5 ? LEAD[0] : t < 2.6 ? LEAD[1] : t < 11 ? LEAD[2] : t < 13 ? LEAD[3] : LEAD[4];
+    rows.forEach((row, i) => {
+      const p = Math.max(0, Math.min(1, (t - 2.6 - i * 0.25) * speed[i] / 7.2));
+      const done = p >= 1, acts = SUBS[i][1];
+      row.classList.toggle('done', done);
+      row.querySelector('.act').textContent = t < 2.6 ? 'Waiting' : done ? 'Done' : acts[Math.min(acts.length - 1, Math.floor(p * acts.length))];
+      row.querySelector('i').style.width = (t < 2.6 ? 0 : p * 100).toFixed(1) + '%';
+    });
+    requestAnimationFrame(tick);
+  };
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) requestAnimationFrame(tick);
+  else rows.forEach((r, i) => { r.classList.add('done'); r.querySelector('.act').textContent = 'Done'; r.querySelector('i').style.width = '100%'; });
+
+  // install tabs + copy
+  const CMDS = { unix: 'curl -fsSL https://raw.githubusercontent.com/ayushpatnaikgit/Elyps-AI/main/install.sh | sh', win: 'irm https://raw.githubusercontent.com/ayushpatnaikgit/Elyps-AI/main/install.ps1 | iex' };
+  const cmd = document.getElementById('cmd'), copy = document.getElementById('copy');
+  document.querySelectorAll('.tabs button').forEach((b) => b.onclick = () => { document.querySelectorAll('.tabs button').forEach((x) => x.classList.toggle('on', x === b)); cmd.textContent = CMDS[b.dataset.os]; copy.textContent = 'Copy'; });
+  if (/Win/.test(navigator.platform)) document.querySelector('.tabs [data-os=win]').click();
+  copy.onclick = async () => { try { await navigator.clipboard.writeText(cmd.textContent); copy.textContent = 'Copied ✓'; } catch { copy.textContent = 'Select & copy'; } setTimeout(() => copy.textContent = 'Copy', 2000); };
+</script>
+</body>
+</html>

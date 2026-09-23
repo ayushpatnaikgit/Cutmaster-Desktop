@@ -17,7 +17,8 @@ const w = +opt('w', 1920), h = +opt('h', 1080), fps = +opt('fps', 25);
 const url = `file://${path.resolve(import.meta.dirname, '../html/scene.html')}?s=${scene}&w=${w}&h=${h}`;
 
 const browser = await puppeteer.launch({
-  executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome',
+  // the image sets CHROME_PATH (Chromium); outside it, the first browser found
+  executablePath: process.env.CHROME_PATH || ['/usr/bin/chromium', '/usr/bin/google-chrome', '/usr/bin/chromium-browser'].find((p) => fs.existsSync(p)),
   headless: true,
   args: ['--allow-file-access-from-files', '--disable-web-security', '--hide-scrollbars', '--force-color-profile=srgb',
     ...(process.env.CHROME_NO_SANDBOX ? ['--no-sandbox', '--disable-dev-shm-usage'] : [])],

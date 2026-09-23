@@ -14,6 +14,7 @@
     "@remotion/cli": "^4.0.527",
     "@remotion/media-utils": "^4.0.527",
     "@types/react": "^19.3.0",
+    "d3": "^7.9.0",
     "gsap": "^3.15.0",
     "puppeteer-core": "^25.11.0",
     "react": "^19.3.0",

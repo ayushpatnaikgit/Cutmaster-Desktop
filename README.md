@@ -8,7 +8,7 @@
 
 Drop in a recorded talk, say what you want, and get back a finished, on-brand video with animated graphics timed to every word.
 
-[Install](#install) · [What it does](#what-it-does) · [How it works](#how-it-works) · [Costs](#costs) · [Privacy](#privacy-and-safety)
+[Website](https://ayushpatnaikgit.github.io/Elyps-AI/) · [Install](#install) · [What it does](#what-it-does) · [How it works](#how-it-works) · [Costs](#costs) · [Privacy](#privacy-and-safety)
 
 <br>
 
@@ -76,14 +76,20 @@ Transcribes every word with timings, then reads the whole thing before deciding 
 **🎨 Finds your brand**<br>
 Name a website and it pulls the colours, fonts and logo from it. Or use what's in your brand kit.
 
+**🔎 Researches the web**<br>
+Looks up the speaker and the claims in the talk, with sources. It captures pages as screenshots or smooth scrolling recordings with the key line highlighted, ready to show in the video.
+
 **✋ Asks before it builds**<br>
 You get a plan first: a beat-by-beat list of what's said and the graphic it proposes. Approve it or redirect it.
 
 </td>
 <td width="50%" valign="top">
 
+**🤝 Works as a team of agents**<br>
+A lead agent plans the edit, then hands each graphic, and any research, to its own subagent. They all work at the same time.
+
 **✏️ Writes its own animations**<br>
-Every graphic is custom code, written for that idea: charts, diagrams, illustrations, quotes. Nothing is picked from a template.
+Every graphic is custom HTML, SVG and GSAP code (with d3 for charts), written for that idea: charts that draw themselves, diagrams that build as they're named. Nothing is picked from a template.
 
 **🖼️ Makes illustrations and music**<br>
 Illustrations in one consistent style, generated with Nano Banana. Background music composed with Lyria.
@@ -188,18 +194,23 @@ Then:
 
 ```mermaid
 flowchart LR
-    A["🎥 Camera + 🎙️ mic<br>+ your brief"] --> B["Sync, transcribe,<br>read the talk"]
-    B --> C["Research the brand"]
+    A["🎥 Camera + 🎙️ mic<br>+ your brief"] --> B["Lead agent: sync,<br>transcribe, read the talk"]
+    B --> C["Research the brand<br>and the speaker"]
     C --> D{"Plan<br>for you to approve"}
     D -->|"change it"| C
-    D -->|"looks good"| E["Write graphics as code<br>+ draw illustrations<br>+ compose music"]
-    E --> F["Render frames,<br>look, fix"]
-    F --> E
+    D -->|"looks good"| E1["Subagent<br>graphic 1"]
+    D --> E2["Subagent<br>graphic 2"]
+    D --> E3["Subagent<br>graphic 3 …"]
+    D --> R["Subagent<br>web research"]
+    E1 & E2 & E3 & R --> F["Lead agent: check,<br>place, render"]
     F --> G["🎬 Final 1080p MP4<br>+ YouTube title and chapters"]
-    G -->|"click anything to change it"| E
+    G -->|"click anything to change it"| F
 ```
 
-The editor is an agent. It works in its own sandbox, with a terminal, a code editor and a set of tools: sync, transcription, image and music generation, an HTML-to-video renderer and a Remotion timeline. It decides what to run, writes the code for each graphic, runs it, looks at the result and iterates, the way a human motion designer would, only faster.
+The editor is a team of agents working in one sandbox, with a terminal, a code editor and a set of tools: sync, transcription, web search and page capture, image and music generation, an HTML-to-video renderer and a Remotion timeline.
+
+- The **lead agent** understands the material, researches the brand, plans the edit with you, and does the final assembly.
+- **Subagents** each take one self-contained job and run at the same time. A graphics subagent designs one animation, writes it as code, renders stills, looks at them and fixes them. A research subagent looks things up and captures web pages.
 
 | | |
 |---|---|
@@ -212,7 +223,7 @@ The editor is an agent. It works in its own sandbox, with a terminal, a code edi
 
 Every model is **your choice**. Under **Settings → Models**, pick from the models your key can use: a stronger agent for hard edits, a different image model, a different music model. The choice applies to new videos.
 
-How the agent is told to work, from understanding the brief to its quality bar, is plain English in [`app/playbook/AGENTS.md`](app/playbook/AGENTS.md). It's the thing to tune.
+How the agents are told to work is plain English in [`app/playbook/`](app/playbook/): [`AGENTS.md`](app/playbook/AGENTS.md) for the lead, [`GRAPHICS.md`](app/playbook/GRAPHICS.md) for graphics subagents, [`RESEARCH.md`](app/playbook/RESEARCH.md) for research. They're the thing to tune.
 
 <br>
 

@@ -37,7 +37,7 @@ function prepare() {
     fs.symlinkSync(src, path.join(work, 'raw', f));
   }
   fs.mkdirSync(path.join(work, 'scripts'), { recursive: true });
-  fs.copyFileSync(path.join(ROOT, 'playbook', 'AGENTS.md'), path.join(work, 'AGENTS.md'));
+  for (const f of fs.readdirSync(path.join(ROOT, 'playbook')).filter((f) => f.endsWith('.md'))) fs.copyFileSync(path.join(ROOT, 'playbook', f), path.join(work, f));
   for (const helper of ['ask-user.py', 'run-long.sh', 'check-long.sh', 'look.py']) {
     fs.copyFileSync(path.join(ROOT, 'scripts', helper), path.join(work, 'scripts', helper));
     fs.chmodSync(path.join(work, 'scripts', helper), 0o755);
@@ -83,7 +83,7 @@ const driver = { openhands: runOpenHands, gemini: runGemini }[job.driver] || run
 // A revision works in the existing workspace: refresh the helpers, then brief
 // the agent on the one change that was asked for.
 function prepareRevision() {
-  fs.copyFileSync(path.join(ROOT, 'playbook', 'AGENTS.md'), path.join(work, 'AGENTS.md'));
+  for (const f of fs.readdirSync(path.join(ROOT, 'playbook')).filter((f) => f.endsWith('.md'))) fs.copyFileSync(path.join(ROOT, 'playbook', f), path.join(work, f));
   for (const helper of ['ask-user.py', 'run-long.sh', 'check-long.sh', 'look.py']) {
     fs.copyFileSync(path.join(ROOT, 'scripts', helper), path.join(work, 'scripts', helper));
   }

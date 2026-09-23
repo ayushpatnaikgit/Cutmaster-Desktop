@@ -41,38 +41,18 @@
   const GX = 990; // half-mode graphics column
 
   // ---------------------------------------------------------------------------
-  // Episode graphics. One clip() per beat, in source-time order.
-  //   clip(key, 'half', startSec, endSec, build)
+  // Episode graphics: one file per graphic, html/clips/<key>.js, each calling
+  //   XKDR_CLIP(key, 'half', startSec, endSec, ({ tl, at, stage, S }) => { ... })
+  // One file each means several agents can write graphics at the same time
+  // without touching each other's work. html/clips/_example-*.js show the
+  // pattern (files starting with _ are never loaded).
   // Group clips back to back (one clip's end == the next one's start) so the
-  // speaker settles into half-screen once and stays there — moving him in and
-  // out for every beat reads as restless.
+  // speaker settles into half-screen once and stays there.
   // at(sourceSeconds) converts a transcript timestamp into clip time, so write
   // the times you got from scripts/find-words.py directly.
   // ---------------------------------------------------------------------------
 
-  // Example: a headline beat with an illustration.
-  clip('clipIdea', 'half', 7.4, 25.6, ({ tl, at, stage }) => {
-    const e = eyebrow(stage, GX, 130, 'The big idea');
-    const h1 = head(stage, GX, 190, 'The claim, in the speaker\u2019s own framing', 54);
-    const h2 = head(stage, GX, 318, 'the part worth colouring', 54, C.coral);
-    rise(tl, e, at(7.6)); rise(tl, h1, at(7.9)); rise(tl, h2, at(11.2));
-    const illo = img(stage, 'ledger.jpg', { left: GX + 'px', top: '490px', width: '460px', height: '460px' });
-    rise(tl, illo, at(12.0), { y: 16, d: 1.2 });
-  });
-
-  // Example: a chart beat. Invented numbers always carry the Illustrative mark.
-  clip('clipChart', 'half', 89.2, 107.0, ({ tl, at, stage }) => {
-    const e = eyebrow(stage, GX, 130, 'What the numbers do');
-    const il = illustrative(stage, 1690, 124);
-    rise(tl, [e, il], at(89.5));
-    const base = 880, maxH = 400;
-    const axis = el(stage, { left: GX + 'px', top: base + 'px', width: '850px', height: '3px', background: C.ink });
-    rise(tl, axis, at(90.5), { y: 0 });
-    [0.9, 0.35, 0.7, 0.22, 0.58, 0.8].forEach((v, i) => {
-      const bar = el(stage, { left: GX + 16 + i * 140 + 'px', top: base - v * maxH + 'px', width: '54px', height: v * maxH + 'px', background: C.coral, transformOrigin: '50% 100%' });
-      tl.from(bar, { scaleY: 0, duration: 0.9, ease: 'power3.out' }, at(93.8) + i * 0.08);
-    });
-  });
-
+  window.XKDR_CLIP = clip;
+  window.XKDR_KIT = { C, H, el, makeTL, gridBg, F, rise, softBraces, IMG, GX, eyebrow, text, head, serif, img, chip, sq, illustrative };
   window.XKDR_CLIPS = CLIPS;
 })();

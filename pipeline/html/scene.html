@@ -13,6 +13,15 @@
 <style>html,body{margin:0;background:#000}#stage{position:relative;overflow:hidden}</style>
 <div id="stage"></div>
 <script src="../node_modules/gsap/dist/gsap.min.js"></script>
+<script src="../node_modules/gsap/dist/DrawSVGPlugin.min.js"></script>
+<script src="../node_modules/gsap/dist/MorphSVGPlugin.min.js"></script>
+<script src="../node_modules/gsap/dist/MotionPathPlugin.min.js"></script>
+<script src="../node_modules/gsap/dist/SplitText.min.js"></script>
+<script src="../node_modules/gsap/dist/TextPlugin.min.js"></script>
+<script src="../node_modules/gsap/dist/ScrambleTextPlugin.min.js"></script>
+<script src="../node_modules/gsap/dist/CustomEase.min.js"></script>
+<script src="../node_modules/d3/dist/d3.min.js"></script>
+<script>gsap.registerPlugin(DrawSVGPlugin, MorphSVGPlugin, MotionPathPlugin, SplitText, TextPlugin, ScrambleTextPlugin, CustomEase);</script>
 <script src="episode.js"></script>
 <script src="assets.js"></script>
 <script src="scenes.js"></script>
@@ -24,7 +33,14 @@
   Object.assign(stage.style, { width: w + 'px', height: h + 'px' });
   const fonts = ['400 20px Montserrat', '600 20px Montserrat', '700 20px Montserrat', '800 20px Montserrat', '900 20px Montserrat',
     '400 20px Merriweather', 'italic 400 20px Merriweather', '700 20px Merriweather', '700 20px "Josefin Sans"', '400 20px "JetBrains Mono"'];
-  Promise.all(fonts.map((f) => document.fonts.load(f))).then(async () => {
+  // A graphic written in its own file (html/clips/<key>.js) is loaded on its
+  // own, so one graphic being mid-edit never breaks another's render.
+  const part = (key) => new Promise((res) => {
+    if (!key || window.XKDR_SCENES.SCENES[key]) return res();
+    const sc = document.createElement('script'); sc.src = `clips/${key}.js`; sc.onload = sc.onerror = res; document.head.appendChild(sc);
+  });
+  Promise.all([...fonts.map((f) => document.fonts.load(f)), part(q.get('s'))]).then(async () => {
+    if (!window.XKDR_SCENES.SCENES[q.get('s')]) throw new Error(`No scene "${q.get('s')}": expected it in scenes.js, clips.js or html/clips/${q.get('s')}.js (the file name must match the key)`);
     const S = window.XKDR_SCENES.build(q.get('s'), stage);
     await Promise.all([...stage.querySelectorAll('img')].map((i) => i.decode().catch(() => {})));
     window.__duration = S.duration;

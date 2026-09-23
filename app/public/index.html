@@ -183,7 +183,20 @@
   .steps.idle .spin { animation:none; border-color:var(--ok); }
   @keyframes spin { to { transform:rotate(360deg); } }
   @media (prefers-reduced-motion:reduce) { .steps .spin { animation:none; } }
-  .steps ol { margin:0; padding:0 14px 12px 34px; font:400 13.5px/1.75 var(--sans); color:var(--ink-2); max-height:260px; overflow:auto; }
+  .steps ol { margin:0; padding:0 14px 12px 14px; list-style:none; font:400 13.5px/1.75 var(--sans); color:var(--ink-2); max-height:300px; overflow:auto; }
+  /* each step: a spinner while it runs, a tick once it's done */
+  .steps li { display:flex; align-items:center; gap:9px; }
+  .steps li .st { flex:none; width:14px; height:14px; display:grid; place-items:center; }
+  .steps li .st::before { content:''; width:12px; height:12px; border-radius:50%; border:2px solid var(--line); border-top-color:var(--brand); animation:spin .9s linear infinite; box-sizing:border-box; }
+  .steps li.done .st::before { animation:none; border:0; width:14px; height:14px; background:var(--ok); -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1.4 14.2-4-4 1.4-1.4 2.6 2.6 5.6-5.6 1.4 1.4z'/%3E%3C/svg%3E") center/contain no-repeat; mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1.4 14.2-4-4 1.4-1.4 2.6 2.6 5.6-5.6 1.4 1.4z'/%3E%3C/svg%3E") center/contain no-repeat; }
+  .steps li.done { color:var(--muted); }
+  /* a subagent: its own row, with what it's doing right now */
+  .steps li.sub { margin:4px 0; padding:6px 10px; border-radius:10px; background:var(--brand-tint); color:var(--ink); }
+  .steps li.sub b { font-weight:700; white-space:nowrap; }
+  .steps li.sub .act { color:var(--ink-2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; flex:1; }
+  .steps li.sub .n { color:var(--muted); font-size:12px; white-space:nowrap; }
+  .steps li.sub.done { background:transparent; box-shadow:inset 0 0 0 1px var(--line-2); }
+  @media (prefers-reduced-motion:reduce) { .steps li .st::before { animation:none; } }
   .ask { border:1px solid #f3d9ae; background:var(--warn-tint); border-radius:var(--r-lg); padding:14px; display:grid; gap:10px; }
   .ask b { color:var(--warn); }
   .ask pre { margin:0; background:var(--surface); border-radius:var(--r); padding:10px 12px; max-height:320px; overflow:auto; font:400 12px/1.55 var(--mono); white-space:pre-wrap; }
@@ -820,6 +833,10 @@ async function chat(p, jobs) {
     if ((m = c.match(/render-html\.mjs\s+(\S+)[^|&]*--stills/))) return `Previewing the ${pretty(m[1])} graphic`;
     if ((m = c.match(/render-html\.mjs\s+(\S+)/))) return `Animating ${pretty(m[1])}`;
     if (/export-clips/.test(c)) return 'Placing the graphics on the timeline';
+    if ((m = c.match(/web-search\.py\s+(?:--json\s+)?["']?([^"']{3,60})/))) return `Searching the web: ${m[1].trim()}`;
+    if ((m = c.match(/web-capture\.mjs\s+scroll\s+\S*?https?:\/\/([^\/\s'"]+)/))) return `Recording a scroll through ${m[1].replace(/^www\./, '')}`;
+    if ((m = c.match(/web-capture\.mjs\s+shot\s+\S*?https?:\/\/([^\/\s'"]+)/))) return `Screenshotting ${m[1].replace(/^www\./, '')}`;
+    if (/html\/clips\//.test(c)) return 'Writing the animation';
     if ((m = c.match(/(?:curl|wget)\b.*https?:\/\/([^\/\s'"]+)/))) return `Reading ${m[1].replace(/^www\./, '')}`;
     if (/ffprobe|ffmpeg .*-vframes|mediainfo/.test(c)) return 'Looking at the footage';
     if (/convert |magick |clean/.test(c)) return 'Cleaning up the illustrations';
@@ -830,16 +847,57 @@ async function chat(p, jobs) {
   // Turns one run's raw events into messages, folding commands into a "working" row.
   function renderer() {
     let group = null, count = 0, fin = null, pending = null;
-    const open = () => { group = h(`<details class="steps"><summary><span class="spin"></span><span class="lbl">Working…</span></summary><ol></ol></details>`); count = 0; add(group); };
-    const close = () => { if (group) { group.classList.add('idle'); group.querySelector('.lbl').textContent = `Did ${count} step${count === 1 ? '' : 's'}`; } group = null; };
-    // one line per activity: repeated checks on the same thing fold together
+    let subs = {}, lastLead = null;
+    const open = () => { group = h(`<details class="steps"><summary><span class="spin"></span><span class="lbl">Working…</span></summary><ol></ol></details>`); count = 0; subs = {}; lastLead = null; add(group); };
+    const close = () => {
+      if (group) {
+        group.classList.add('idle'); group.querySelectorAll('li').forEach((li) => li.classList.add('done'));
+        const n = Object.keys(subs).length;
+        group.querySelector('.lbl').textContent = `Did ${count} step${count === 1 ? '' : 's'}${n ? ` with ${n} helper${n === 1 ? '' : 's'}` : ''}`;
+      }
+      group = null;
+    };
+    const summary = (label) => {
+      const busy = Object.values(subs).filter((r) => !r.classList.contains('done')).length;
+      group.querySelector('.lbl').textContent = busy ? `${busy} helper${busy === 1 ? '' : 's'} working · ${count} steps` : count ? `${label} · ${count} step${count === 1 ? '' : 's'}` : label;
+    };
+    // one line per activity: repeated checks on the same thing fold together;
+    // the newest line spins, earlier ones get a tick
     const step = (label, raw) => {
       if (!group) open();
       const ol = group.querySelector('ol');
-      if (ol.lastElementChild?.dataset.label !== label) {
-        const li = h(`<li title="${esc(String(raw).slice(0, 300))}">${esc(label)}</li>`); li.dataset.label = label; ol.appendChild(li);
+      if (lastLead?.dataset.label !== label || lastLead !== [...ol.children].filter((li) => !li.classList.contains('sub')).at(-1)) {
+        lastLead?.classList.add('done');
+        const li = h(`<li title="${esc(String(raw).slice(0, 300))}"><span class="st"></span><span>${esc(label)}</span></li>`); li.dataset.label = label; ol.appendChild(li); lastLead = li;
       }
-      group.querySelector('.lbl').textContent = count ? `${label} · ${count} step${count === 1 ? '' : 's'}` : label;
+      ol.scrollTop = ol.scrollHeight;
+      summary(label);
+    };
+    // a subagent's line: "@@sub:<name> $ cmd", "… Summary: …" or "… Done"
+    const subStep = (tag, rest) => {
+      if (!group) open();
+      const ol = group.querySelector('ol');
+      let row = subs[tag];
+      if (!row) {
+        lastLead?.classList.add('done');
+        row = h(`<li class="sub"><span class="st"></span><b>${esc(tag.replace(/[-_]+/g, ' '))}</b><span class="act">Starting</span><span class="n"></span></li>`);
+        row.dataset.n = '0'; row.dataset.pending = ''; subs[tag] = row; ol.appendChild(row);
+      }
+      if (/^Done\b/.test(rest)) { row.classList.add('done'); row.querySelector('.act').textContent = 'Done'; summary('Working on the edit'); return; }
+      row.classList.remove('done');
+      const say = rest.match(/^Summary:\s*(.+)/);
+      if (say) { row.dataset.pending = say[1]; return; }
+      const cmd = rest.match(/^\$\s+(.+)/);
+      if (!cmd) return;
+      count++;
+      const n = +row.dataset.n + 1; row.dataset.n = String(n);
+      let label = /^edit\s/.test(cmd[1]) ? 'Writing the animation' : /^view\s/.test(cmd[1]) ? 'Reading' : stepLabel(cmd[1]);
+      if (label === GENERIC && row.dataset.pending) label = plainSummary(row.dataset.pending) || GENERIC;
+      row.dataset.pending = '';
+      row.querySelector('.act').textContent = label;
+      row.querySelector('.n').textContent = `${n} step${n === 1 ? '' : 's'}`;
+      row.title = cmd[1].slice(0, 300);
+      summary(label);
     };
     const on = (e) => {
       const t = (e.text || '').trim();
@@ -847,7 +905,10 @@ async function chat(p, jobs) {
       if (e.kind === 'note') { close(); return meSays(t.replace(/^You said:\s*/, '')); }
       if (e.kind === 'problem') { close(); return add(h(`<div class="doctor bad" style="width:auto;margin:0"><b>The editor stopped</b><span>${esc(t)}</span></div>`)); }
       if (e.kind === 'status') { if (/Worker (started|finished)|Final render|Revising/.test(t)) note(t.replace(/\s*\(pid[^)]*\)/, '')); return; }
+      if (fin && /^@@sub:/.test(t)) { /* a helper's line while the lead is summing up: ignore */ return; }
       if (fin) { if (/^Tokens:|^\[/.test(t)) { close(); agentSays(fin.join('\n').trim()); fin = null; } else fin.push(t); return; }
+      const sub = t.match(/^@@sub:([\w.-]+)\s+(.*)$/);
+      if (sub) return subStep(sub[1], sub[2]);
       if (/^Finish with message:/.test(t)) { fin = []; return; }
       // The agent's one-line summary of each action: a line in the working
       // panel when it's plain English, dropped when it's a raw tool call.
