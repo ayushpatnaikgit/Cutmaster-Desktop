@@ -178,7 +178,7 @@ done
 cmd="$HOME_DIR/cutmaster"; [ -n "$linked" ] && cmd="cutmaster"
 say "Cutmaster AI is running at http://localhost:$PORT"
 info "Put camera files in $HOME_DIR/media and use \"From disk\" with /media/<file name>."
-info "Add your Gemini API key under \"API key\" (bottom left) — get one at aistudio.google.com/apikey."
+info "Add your Gemini API key under \"Settings\" (bottom left) — get one at aistudio.google.com/apikey."
 info "Manage it with: $cmd start | stop | update | status"
 if [ "${CUTMASTER_NO_OPEN:-}" != 1 ]; then
   (command -v open >/dev/null 2>&1 && open "http://localhost:$PORT") || (command -v xdg-open >/dev/null 2>&1 && xdg-open "http://localhost:$PORT" >/dev/null 2>&1) || true

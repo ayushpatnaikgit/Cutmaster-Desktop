@@ -141,7 +141,7 @@ The installer:
 
 Then:
 
-1. Click **API key** (bottom left) and paste a [Gemini API key](https://aistudio.google.com/apikey). That one key runs the agent, the illustrations and the music.
+1. Click **Settings** (bottom left) and paste a [Gemini API key](https://aistudio.google.com/apikey). That one key runs the agent, the illustrations and the music.
 2. Put your camera file and mic recording in `Cutmaster/media`.
 3. On the home page choose **From disk**, enter `/media/<file name>` for each file, write your brief, and press **Start editing**.
 
@@ -181,12 +181,14 @@ The editor is an agent. It works in its own sandbox, with a terminal, a code edi
 
 | | |
 |---|---|
-| **Agent** | [OpenHands](https://github.com/OpenHands/OpenHands) driving **Gemini 3.8 Flash** |
+| **Agent** | [OpenHands](https://github.com/OpenHands/OpenHands) driving **Gemini 3.8 Flash** (default) |
 | **Checking frames** | Gemini 3.1 Pro |
 | **Illustrations** | Nano Banana (Gemini image generation) |
 | **Music** | Lyria 3 |
 | **Transcription** | Whisper (faster-whisper), on your machine |
 | **Video** | Remotion, ffmpeg and Chromium, on your machine |
+
+Every model is **your choice**. Under **Settings → Models**, pick from the models your key can use: a stronger agent for hard edits, a different image model, a different music model. The choice applies to new videos.
 
 How the agent is told to work, from understanding the brief to its quality bar, is plain English in [`app/playbook/AGENTS.md`](app/playbook/AGENTS.md). It's the thing to tune.
 
@@ -210,9 +212,8 @@ The **Usage** page shows what each video cost, and you can set a monthly budget.
 ## Privacy and safety
 
 - **Your footage stays on your computer.** It's read in place from your media folder and never uploaded. Only text, frames the agent checks, and generation prompts go to Google's API.
-- **Your key is stored encrypted**, in a Docker volume on your machine.
-- **The agent is sandboxed.** It runs code it writes itself, so it runs as an unprivileged user inside the container. It can't see your files outside the media folder, which it can only read. The app only listens on `127.0.0.1`, so nobody else on your network can reach it.
-- **Not yet done:** inside its sandbox the agent can read your Gemini key. A web page it reads while researching a brand could, in principle, try to trick it into leaking the key. Isolating the key from the agent is the next release.
+- **The agent never sees your key.** It runs as its own user inside the container, which can't read the encrypted key store. It reaches Gemini only through Cutmaster's local proxy, using a token that works only from inside the container, only for Gemini calls, and only while its job runs. A web page it reads while researching can't talk it into leaking the key, because it doesn't have the key.
+- **The agent is sandboxed.** It runs code it writes itself, so it runs unprivileged inside the container. It can't see your files outside the media folder, which it can only read. **Stop** ends everything it started. The app only listens on `127.0.0.1`, so nobody else on your network can reach it.
 
 <br>
 

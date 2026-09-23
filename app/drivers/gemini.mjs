@@ -4,8 +4,11 @@
 import { execFile } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { agentEnv, asAgent, proxyBase } from '../lib/sandbox.mjs';
+import { getModels, modelEnv } from '../lib/models.mjs';
 
-const API = 'https://generativelanguage.googleapis.com/v1beta/models';
+// Through the app's key proxy (lib/sandbox.mjs), never with the key itself.
+const API = () => `${process.env.GEMINI_BASE_URL || proxyBase()}/models`;
 const MAX_OUT = 12000;     // characters of tool output handed back to the model
 const MAX_STEPS = 400;
 
@@ -53,7 +56,8 @@ const TOOLS = [{
 
 function runBash(command, cwd, env, timeout_s = 900) {
   return new Promise((resolve) => {
-    execFile('bash', ['-lc', command], { cwd, env, timeout: timeout_s * 1000, maxBuffer: 64 * 1024 * 1024 },
+    const [cmd, args] = asAgent('bash', ['-lc', `umask 002; ${command}`]);
+    execFile(cmd, args, { cwd, env, timeout: timeout_s * 1000, maxBuffer: 64 * 1024 * 1024 },
       (err, stdout, stderr) => resolve({
         exit_code: err?.code ?? (err ? 1 : 0),
         timed_out: err?.killed === true,
@@ -95,9 +99,9 @@ async function callTool(name, args, { work, env }) {
   }
 }
 
-export async function runGemini({ job, work, jobPath, taskFile = 'TASK.md', apiKey, log }) {
-  const env = { ...process.env, GEMINI_API_KEY: apiKey, GEMINI: apiKey, STUDIO_JOB_DIR: jobPath || path.dirname(work), STUDIO_JOB_ID: job.id };
-  const model = job.model || 'gemini-3.8-flash';
+export async function runGemini({ job, work, jobPath, taskFile = 'TASK.md', token, log }) {
+  const env = agentEnv(process.env, token, { ...modelEnv({ ...getModels(), ...(job.models || {}) }), STUDIO_JOB_DIR: jobPath || path.dirname(work), STUDIO_JOB_ID: job.id });
+  const model = job.model || job.models?.agent || 'gemini-3.8-flash';
   const system = `You are an expert video editor working inside a prepared workspace.
 Read AGENTS.md first — it is how you work — then ${taskFile}, which is the request
 in the person's own words. Work in small verifiable steps and check every result.
@@ -108,9 +112,9 @@ finished and verified, reply with the text TASK COMPLETE and a short summary.`;
   const contents = [{ role: 'user', parts: [{ text: `Begin. The workspace is your current directory.\n\n${fs.readFileSync(path.join(work, taskFile), 'utf8')}` }] }];
 
   for (let step = 1; step <= MAX_STEPS; step++) {
-    const res = await fetch(`${API}/${model}:generateContent`, {
+    const res = await fetch(`${API()}/${model}:generateContent`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': token },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: system }] },
         contents,

@@ -5,6 +5,9 @@ can stream it. The workspace is the job's work/ directory; tools run on this
 machine so they can reach ffmpeg, Chrome and Remotion.
 """
 import json, os, sys
+
+# Files the agent makes stay writable by the app (they share a group in Docker).
+os.umask(0o002)
 from pathlib import Path
 
 os.environ.setdefault("OPENHANDS_SUPPRESS_BANNER", "1")
@@ -33,9 +36,12 @@ for name, cls in (("TerminalTool", TerminalTool), ("FileEditorTool", FileEditorT
     except Exception:
         pass
 
+# The key never reaches this process: api_key is a job token, and base_url is
+# the Cutmaster app's local proxy, which swaps in the real key.
 llm = LLM(
     model=f"gemini/{model}",
     api_key=api_key,
+    base_url=os.environ.get("GEMINI_BASE_URL") or None,
     temperature=0.4,
     usage_id="episode",
 )

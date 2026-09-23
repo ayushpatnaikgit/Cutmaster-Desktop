@@ -6,9 +6,9 @@ import express from 'express';
 import multer from 'multer';
 import fs from 'node:fs';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import {
-  ROOT, jobDir, createJob, getJob, updateJob, listJobs, emit, readEvents,
+  ROOT, DATA, JOBS, jobDir, createJob, getJob, updateJob, listJobs, emit, readEvents,
   currentGate, answerGate, saveKey, readKey, keyStatus, clearKey,
 } from './lib/store.mjs';
 import {
@@ -17,9 +17,29 @@ import {
 } from './lib/assets.mjs';
 import { usageSummary, getPrices, setPrices, recordUsage } from './lib/usage.mjs';
 import { doctor, resetDoctor, version } from './lib/doctor.mjs';
+import { ROLES, getModels, setModels, availableModels } from './lib/models.mjs';
+import { geminiProxy, newJobToken, proxyBase, stopAgent, AGENT_USER } from './lib/sandbox.mjs';
 
 const app = express();
 const PORT = process.env.PORT || 4321;
+// Files the agent (a separate user in Docker) must be able to write — job
+// workspaces — are group-writable; the key files set their own 0600.
+if (AGENT_USER) {
+  process.umask(0o002);
+  // Data from before the agent had its own user: hand the shared folders to
+  // the shared group so the agent can write its workspaces.
+  for (const d of [DATA, JOBS]) {
+    try { execFileSync('chgrp', ['studio', d]); fs.chmodSync(d, 0o2775); } catch { /* not ours to change */ }
+  }
+}
+
+// The agent reaches Gemini only through here, with its job's token (see lib/sandbox.mjs).
+// Registered before the JSON parser: request bodies pass through untouched.
+const tokenJob = (token) => {
+  const j = listJobs().find((x) => x.proxyToken === token && (x.status === 'running' || x.status === 'queued'));
+  return j || null;
+};
+app.use('/gemini', express.raw({ type: () => true, limit: '64mb' }), geminiProxy({ tokenJob, realKey: readKey }));
 app.use(express.json({ limit: '4mb' }));
 app.use(express.static(path.join(ROOT, 'public')));
 // Markdown rendering for agent messages and plans (sanitised in the page).
@@ -57,6 +77,15 @@ app.post('/api/key', async (req, res) => {
   res.json(keyStatus());
 });
 app.delete('/api/key', (req, res) => { clearKey(); resetDoctor(); res.json(keyStatus()); });
+
+// ---------- models ----------
+app.get('/api/models', async (req, res) => {
+  const key = readKey();
+  res.json({ selected: getModels(), roles: ROLES, available: key ? await availableModels(key) : null });
+});
+app.put('/api/models', (req, res) => {
+  try { res.json({ selected: setModels(req.body) }); } catch (e) { res.status(400).json({ error: e.message }); }
+});
 
 // ---------- system check ----------
 app.get('/api/doctor', async (req, res) => res.json(await doctor({ fresh: req.query.fresh === '1' })));
@@ -178,7 +207,8 @@ app.post('/api/projects/:id/produce', async (req, res) => {
     prompt: req.body.prompt || project.notes || '',
     speaker: project.speaker, org: project.org, title: project.title,
     driver: req.body.driver || 'openhands',
-    model: req.body.model || 'gemini-3.8-flash',
+    model: req.body.model || getModels().agent,
+    models: { ...getModels(), ...(req.body.model ? { agent: req.body.model } : {}) },
     video: video.name, audio: audio?.name || null,
   });
   const raw = path.join(jobDir(job.id), 'raw');
@@ -225,7 +255,7 @@ app.post('/api/jobs/:id/answer', (req, res) => {
 
 app.post('/api/jobs/:id/cancel', (req, res) => {
   const job = getJob(req.params.id);
-  if (job?.pid) { try { process.kill(job.pid, 'SIGTERM'); } catch {} }
+  if (job?.pid) stopAgent(job.pid);
   updateJob(req.params.id, { status: 'cancelled' });
   res.json({ ok: true });
 });
@@ -294,7 +324,7 @@ app.post('/api/jobs/:id/revise', (req, res) => {
   const job = createJob({
     projectId: base.projectId, status: 'queued', baseJob: base.id, work: workOf(base.id),
     prompt, target: target || null, speaker: base.speaker, org: base.org, title: base.title,
-    driver: base.driver, model: base.model, video: base.video, audio: base.audio,
+    driver: base.driver, model: base.model, models: base.models, video: base.video, audio: base.audio,
   });
   const what = target?.label ? ` on ${target.label}` : target?.t != null ? ` at ${Math.floor(target.t / 60)}:${String(Math.floor(target.t % 60)).padStart(2, '0')}` : '';
   emit(job.id, { kind: 'status', text: `Revision${what}` });
@@ -316,7 +346,8 @@ app.post('/api/assets/edit', async (req, res) => {
   if (kindOf(file) !== 'image') return res.status(400).json({ error: 'Only images can be edited in place; ask for a new version instead' });
   try {
     const mime = /\.png$/i.test(file) ? 'image/png' : 'image/jpeg';
-    const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent', {
+    const imageModel = getModels().image;
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${imageModel}:generateContent`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
@@ -332,8 +363,8 @@ app.post('/api/assets/edit', async (req, res) => {
     let out = `${stem}-edit.${ext}`, n = 2;
     while (fs.existsSync(path.join(dir, out))) out = `${stem}-edit${n++}.${ext}`;
     fs.writeFileSync(path.join(dir, out), Buffer.from(part.inlineData.data, 'base64'));
-    writeMeta(dir, out, { source: 'ai', prompt: `Edit of ${path.basename(file)}: ${prompt}`, model: 'gemini-3.1-flash-image', createdAt: new Date().toISOString() });
-    recordUsage({ kind: 'image', scope, projectId, model: 'gemini-3.1-flash-image', name: out, edit: true });
+    writeMeta(dir, out, { source: 'ai', prompt: `Edit of ${path.basename(file)}: ${prompt}`, model: imageModel, createdAt: new Date().toISOString() });
+    recordUsage({ kind: 'image', scope, projectId, model: imageModel, name: out, edit: true });
     res.json({ name: out });
   } catch (e) {
     res.status(502).json({ error: e.message });
@@ -349,10 +380,14 @@ function pump() {
   const job = getJob(id);
   if (!job || job.status === 'cancelled') return pump();
   const logFile = fs.openSync(path.join(jobDir(id), 'worker.log'), 'a');
+  // The worker (and the agent it starts) get a job token for the local
+  // Gemini proxy, never the key itself.
+  const token = job.proxyToken || newJobToken();
+  if (!job.proxyToken) updateJob(id, { proxyToken: token });
   // Detached with no pipes: the run survives a server restart.
   const proc = spawn(process.execPath, [path.join(ROOT, 'worker.mjs'), id], {
     cwd: ROOT,
-    env: { ...process.env, GEMINI_API_KEY: readKey() || '' },
+    env: { ...process.env, CUTMASTER_JOB_TOKEN: token, GEMINI_BASE_URL: proxyBase() },
     detached: true,
     stdio: ['ignore', logFile, logFile],
   });
@@ -363,6 +398,7 @@ function pump() {
   const watch = setInterval(() => {
     if (alive(proc.pid)) return;
     clearInterval(watch);
+    stopAgent();   // nothing of the agent's outlives its job
     const j = getJob(id);
     const done = fs.existsSync(path.join(jobDir(id), 'work', 'out', 'episode.mp4'));
     const final = j.status === 'cancelled' ? 'cancelled' : done ? 'done' : (j.status === 'running' ? 'failed' : j.status);

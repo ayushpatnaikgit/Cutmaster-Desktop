@@ -31,7 +31,7 @@ export async function doctor({ fresh = false } = {}) {
 
   const key = keyStatus();
   add('key', 'Gemini API key', key.present ? 'ok' : 'fail', key.present ? `Saved (ends ${key.tail})` : 'Not added yet',
-    key.present ? null : 'Click API key (bottom left) and paste a key from aistudio.google.com/apikey');
+    key.present ? null : 'Click Settings (bottom left) and paste a key from aistudio.google.com/apikey');
 
   const [ffmpeg, chrome, agent, pipe] = await Promise.all([
     run('ffmpeg', ['-version']),

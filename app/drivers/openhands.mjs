@@ -5,8 +5,10 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 import fs from 'node:fs';
 import { ROOT } from '../lib/store.mjs';
+import { getModels, modelEnv } from '../lib/models.mjs';
+import { agentEnv, asAgent } from '../lib/sandbox.mjs';
 
-export function runOpenHands({ job, work, jobPath, taskFile = 'TASK.md', apiKey, log }) {
+export function runOpenHands({ job, work, jobPath, taskFile = 'TASK.md', token, log }) {
   // In Docker OpenHands is installed into the image's Python; locally, into .venv-oh.
   const python = process.env.OPENHANDS_PYTHON || path.join(ROOT, '.venv-oh', 'bin', 'python');
   if (python.includes(path.sep) && !fs.existsSync(python)) {
@@ -15,19 +17,18 @@ export function runOpenHands({ job, work, jobPath, taskFile = 'TASK.md', apiKey,
   }
   const runner = path.join(ROOT, 'drivers', 'openhands_runner.py');
   return new Promise((resolve) => {
-    const proc = spawn(python, [runner, work, job.model || 'gemini-3.8-flash'], {
+    const [cmd, args] = asAgent(python, [runner, work, job.model || getModels().agent]);
+    const proc = spawn(cmd, args, {
       cwd: work,
-      env: {
-        ...process.env,
-        GEMINI_API_KEY: apiKey,
-        GEMINI: apiKey,                      // the pipeline's own generation scripts
+      env: agentEnv(process.env, token, {
+        ...modelEnv({ ...getModels(), ...(job.models || {}), agent: job.model || job.models?.agent || getModels().agent }),
         STUDIO_JOB_DIR: jobPath || path.dirname(work),  // so scripts/ask-user.py finds this job's gate
         TASK_FILE: taskFile,
         STUDIO_JOB_ID: job.id,
         OH_STATE_DIR: path.join(jobPath || path.dirname(work), 'openhands-state'),
         OPENHANDS_SUPPRESS_BANNER: '1',
         PYTHONUNBUFFERED: '1',
-      },
+      }),
     });
     const relay = (chunk) => String(chunk).split('\n').filter(Boolean).forEach((line) => {
       try {

@@ -36,6 +36,9 @@ export function saveKey(plain) {
   }), { mode: 0o600 });
 }
 
+// Key files are for the app's user only — never the agent's (see lib/sandbox.mjs).
+for (const f of [SECRET_FILE, KEY_FILE]) { try { fs.chmodSync(f, 0o600); } catch { /* not created yet */ } }
+
 export function readKey() {
   if (!fs.existsSync(KEY_FILE)) return null;
   const j = JSON.parse(fs.readFileSync(KEY_FILE, 'utf8'));

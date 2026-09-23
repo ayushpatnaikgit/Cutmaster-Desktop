@@ -19,7 +19,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 # backgrounds, Chromium for rendering graphics, tini to reap child processes.
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates curl ffmpeg imagemagick chromium fonts-liberation fonts-noto-core \
-      tini procps git \
+      tini procps git sudo \
     && rm -rf /var/lib/apt/lists/*
 
 # Node 22 from the official image, without disturbing this image's Python.
@@ -32,25 +32,34 @@ RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
 # Python: the agent harness, transcription and the audio-sync maths.
 RUN pip install "openhands-ai==1.11.0" faster-whisper numpy scipy
 
-# Run as an ordinary user: the agent executes commands it writes itself.
-RUN useradd --create-home --uid 1000 cutmaster
+# Two users. The app runs as `cutmaster` and holds the encrypted Gemini key.
+# The agent runs code it writes itself, so it runs as `agent`: it can write
+# job workspaces (shared group `studio`) but can't read the key files, and it
+# reaches Gemini only through the app's local proxy with a per-job token.
+RUN groupadd --gid 1500 studio \
+ && useradd --create-home --uid 1000 --gid studio cutmaster \
+ && useradd --create-home --uid 1001 --gid studio --shell /bin/bash agent \
+ && printf 'Defaults:cutmaster !env_reset\ncutmaster ALL=(agent) NOPASSWD:SETENV: ALL\n' > /etc/sudoers.d/cutmaster-agent \
+ && chmod 440 /etc/sudoers.d/cutmaster-agent && visudo -cf /etc/sudoers.d/cutmaster-agent
 WORKDIR /app
 
-COPY --chown=cutmaster:cutmaster app/package*.json app/
-COPY --chown=cutmaster:cutmaster pipeline/package*.json pipeline/
+COPY --chown=cutmaster:studio app/package*.json app/
+COPY --chown=cutmaster:studio pipeline/package*.json pipeline/
 USER cutmaster
-RUN cd app && npm ci --omit=dev \
+# umask 002: the agent (same group) may write caches under pipeline/node_modules.
+RUN umask 002 && cd app && npm ci --omit=dev \
  && cd ../pipeline && npm ci \
  && npx remotion browser ensure
 
-COPY --chown=cutmaster:cutmaster app/ app/
-COPY --chown=cutmaster:cutmaster pipeline/ pipeline/
+COPY --chown=cutmaster:studio app/ app/
+COPY --chown=cutmaster:studio pipeline/ pipeline/
 
 # The pipeline's scripts call .venv/bin/python; point it at the image's Python.
-RUN python -m venv --system-site-packages /app/pipeline/.venv
+RUN umask 002 && python -m venv --system-site-packages /app/pipeline/.venv
 
 ENV PORT=4322 \
     CUTMASTER_VERSION=$VERSION \
+    AGENT_USER=agent \
     DATA_DIR=/data \
     PIPELINE_DIR=/app/pipeline \
     OPENHANDS_PYTHON=python \
@@ -60,7 +69,10 @@ ENV PORT=4322 \
     HF_HOME=/home/cutmaster/.cache/huggingface
 
 USER root
-RUN mkdir -p /data /media /home/cutmaster/.cache/huggingface && chown -R cutmaster:cutmaster /data /home/cutmaster/.cache
+RUN mkdir -p /data/jobs /media /home/cutmaster/.cache/huggingface \
+ && chown -R cutmaster:studio /data /home/cutmaster/.cache \
+ && chmod 2775 /data /data/jobs /home/cutmaster/.cache /home/cutmaster/.cache/huggingface \
+ && chmod 711 /home/cutmaster
 USER cutmaster
 
 EXPOSE 4322

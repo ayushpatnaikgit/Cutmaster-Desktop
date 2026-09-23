@@ -283,6 +283,13 @@
   .checks { display:grid; gap:6px; font-size:13px; max-height:300px; overflow:auto; }
   .checks li { display:grid; grid-template-columns:18px 1fr auto; gap:6px; }
   .checks ul { margin:0; padding:0; list-style:none; display:grid; gap:6px; }
+
+  .sheet h4.sect { margin:6px 0 -4px; font-size:12px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+  .models { display:grid; grid-template-columns:1fr 1fr; gap:12px 16px; }
+  @media (max-width:640px) { .models { grid-template-columns:1fr; } }
+  .field.model select { height:36px; border:1px solid var(--line); border-radius:var(--r); padding:0 8px; font:400 13px var(--mono); color:var(--ink); background:#fff; }
+  .field.model em { font-style:normal; font-size:11px; color:var(--brand); margin-left:6px; }
+  .field.model .hint { font-weight:400; font-size:12px; }
 </style>
 </head>
 <body>
@@ -294,7 +301,7 @@
     <button data-go="brand"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 22a10 10 0 1 1 10-10c0 2.5-2 3-3.5 3H16a2 2 0 0 0-1.5 3.3A2 2 0 0 1 12 22z"/></svg></span>Brand</button>
     <button data-go="usage"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></span>Usage</button>
     <div class="grow"></div>
-    <button id="keybtn"><span class="keydot" id="keydot"></span><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3L20 3m-3 3l3 3m-6-1l2 2"/></svg></span>API key</button>
+    <button id="keybtn"><span class="keydot" id="keydot"></span><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></span>Settings</button>
   </nav>
   <div class="page" id="page"></div>
 </div>
@@ -373,20 +380,44 @@ async function refreshKey() {
 }
 $('#keybtn').onclick = async () => {
   const k = await refreshKey();
-  const m = sheet(`<h3>Gemini API key</h3>
-    <p class="hint">${k.present ? `Saved key ends in <b>${esc(k.tail)}</b>. ` : ''}One key runs the agent, the images and the music. It's stored encrypted on this machine and never shown to the agent.</p>
-    <label class="field">New key<input type="password" id="kv" placeholder="AIza…" autocomplete="off"></label>
+  const m = sheet(`<h3>Settings</h3>
+    <h4 class="sect">Gemini API key</h4>
+    <p class="hint">${k.present ? `Saved key ends in <b>${esc(k.tail)}</b>. ` : ''}One key runs the agent, the images and the music. It's stored encrypted on this computer and used by the agent inside its sandbox.</p>
+    <div style="display:flex;gap:8px;align-items:end"><label class="field" style="flex:1">${k.present ? 'Replace key' : 'Key'}<input type="password" id="kv" placeholder="AIza…" autocomplete="off"></label>
+      <button class="btn" id="ks">Save</button>${k.present ? '<button class="btn quiet" id="kd">Remove</button>' : ''}</div>
     <div class="err" id="ke"></div>
+    <h4 class="sect">Models</h4>
+    <div id="km"><p class="hint">${k.present ? 'Loading the models your key can use…' : 'Add a key to choose models.'}</p></div>
     <details><summary class="hint" style="cursor:pointer">System check</summary><div class="checks" id="kc"><p class="hint">Checking…</p></div></details>
-    <div style="display:flex;gap:8px"><button class="btn" id="ks">Save</button>${k.present ? '<button class="btn quiet" id="kd">Remove key</button>' : ''}<span style="flex:1"></span><button class="btn quiet" data-close>Close</button></div>`);
+    <div style="display:flex;gap:8px"><span style="flex:1"></span><button class="btn quiet" data-close>Done</button></div>`, true);
   const kc = $('#kc', m);
   m.querySelector('details').ontoggle = async (e) => {
     if (!e.target.open) return;
     const d = await api('/api/doctor?fresh=1').catch((err) => ({ checks: [], error: err.message }));
     kc.innerHTML = d.error ? `<p class="err">${esc(d.error)}</p>` : `<ul>${checkRows(d.checks)}</ul><p class="hint">Version ${esc(d.version || '')}</p>`;
   };
-  $('#ks', m).onclick = async () => { try { await api('/api/key', { method: 'POST', body: JSON.stringify({ key: $('#kv', m).value }) }); m.remove(); refreshKey(); } catch (e) { $('#ke', m).textContent = e.message; } };
+  $('#ks', m).onclick = async () => { try { await api('/api/key', { method: 'POST', body: JSON.stringify({ key: $('#kv', m).value }) }); m.remove(); refreshKey(); showDoctor(); } catch (e) { $('#ke', m).textContent = e.message; } };
   const kd = $('#kd', m); if (kd) kd.onclick = async () => { await api('/api/key', { method: 'DELETE' }); m.remove(); refreshKey(); };
+  if (!k.present) return;
+  // Models: one dropdown per role, filled from what this key can actually call.
+  const md = await api('/api/models').catch((err) => ({ error: err.message }));
+  const km = $('#km', m);
+  if (md.error || !md.available) { km.innerHTML = `<p class="err">${esc(md.error || 'Could not list models')}</p>`; return; }
+  km.innerHTML = `<div class="models">${Object.entries(md.roles).map(([role, r]) => {
+    const opts = md.available[role] || [];
+    const cur = md.selected[role];
+    const list = opts.some((o) => o.id === cur) ? opts : [{ id: cur, name: cur }, ...opts];
+    return `<label class="field model"><span>${esc(r.label)}${cur === r.default ? '' : ' <em>changed</em>'}</span>
+      <select data-role="${role}">${list.map((o) => `<option value="${esc(o.id)}"${o.id === cur ? ' selected' : ''}>${esc(o.id)}${o.id === r.default ? ' (default)' : ''}</option>`).join('')}</select>
+      <span class="hint">${esc(r.hint)}</span></label>`;
+  }).join('')}</div>
+  <div style="display:flex;gap:8px;align-items:center"><span class="hint" id="kms">Applies to new videos. Cost estimates on the Usage page follow the model's own token prices.</span><span style="flex:1"></span><button class="btn quiet small" id="kmr">Reset to defaults</button></div>`;
+  const save = async (patch) => {
+    try { await api('/api/models', { method: 'PUT', body: JSON.stringify(patch) }); $('#kms', m).textContent = 'Saved. New videos will use these models.'; }
+    catch (e) { $('#kms', m).textContent = e.message; }
+  };
+  km.querySelectorAll('select').forEach((sel) => sel.onchange = () => save({ [sel.dataset.role]: sel.value }));
+  $('#kmr', m).onclick = async () => { await save(Object.fromEntries(Object.keys(md.roles).map((r) => [r, '']))); m.remove(); $('#keybtn').click(); };
 };
 function sheet(inner, wide = false) {
   const m = h(`<div class="scrim"><div class="sheet ${wide ? 'wide' : ''}">${inner}</div></div>`);

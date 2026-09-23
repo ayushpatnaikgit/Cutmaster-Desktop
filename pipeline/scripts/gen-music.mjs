@@ -23,10 +23,14 @@ function loadKey() {
   return fs.readFileSync(envPath, 'utf8').match(/^GEMINI=(.*)$/m)[1].trim().replace(/^["']|["']$/g, '');
 }
 const KEY = loadKey();
+// In the app this is its local key proxy; run by hand, Google directly.
+const BASE = process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta';
 
-const [name, model, prompt] = process.argv.slice(2);
+const [name, modelArg, prompt] = process.argv.slice(2);
+// "default" (or "$MUSIC_MODEL" left unexpanded) means the model chosen in the app's settings.
+const model = !modelArg || modelArg === 'default' || modelArg.startsWith('$') ? (process.env.MUSIC_MODEL || 'lyria-3-pro-preview') : modelArg;
 
-const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+const res = await fetch(`${BASE}/models/${model}:generateContent`, {
   method: 'POST',
   headers: { 'Content-Type': 'application/json', 'x-goog-api-key': KEY },
   body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),

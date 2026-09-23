@@ -7,6 +7,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { getModels } from './models.mjs';
 import { DATA } from './store.mjs';
 
 export const BRAND_DIR = path.join(DATA, 'assets', 'brand');
@@ -106,8 +107,6 @@ export function deleteAsset(scope, projectId, name) {
 }
 
 // ---------- AI generation ----------
-const IMAGE_MODEL = 'gemini-3.1-flash-image';   // Nano Banana Flash
-const MUSIC_MODEL = 'lyria-3-pro-preview';
 
 // One house style, so generated illustrations sit together as a set.
 const STYLE = `Style: modern editorial pixel-art illustration, crisp square pixels, clean geometric
@@ -121,7 +120,7 @@ const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g
 export async function generateAsset({ scope, projectId, type, prompt, aspect = '1:1', style = true, apiKey }) {
   const dir = assetDir(scope, projectId);
   fs.mkdirSync(dir, { recursive: true });
-  const model = type === 'music' ? MUSIC_MODEL : IMAGE_MODEL;
+  const model = type === 'music' ? getModels().music : getModels().image;
   const body = type === 'music'
     ? { contents: [{ parts: [{ text: prompt }] }] }
     : {

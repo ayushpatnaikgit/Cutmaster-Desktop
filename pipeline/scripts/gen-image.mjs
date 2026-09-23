@@ -1,5 +1,5 @@
 // Usage: node scripts/gen-image.mjs <name> <aspect> "<subject>"
-// Generates an on-brand illustration with Nano Banana Flash (gemini-3.1-flash-image).
+// Generates an on-brand illustration with Nano Banana (IMAGE_MODEL, default gemini-3.1-flash-image).
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -23,8 +23,10 @@ function loadKey() {
   return fs.readFileSync(envPath, 'utf8').match(/^GEMINI=(.*)$/m)[1].trim().replace(/^["']|["']$/g, '');
 }
 const KEY = loadKey();
+// In the app this is its local key proxy; run by hand, Google directly.
+const BASE = process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta';
 
-const MODEL = 'gemini-3.1-flash-image';
+const MODEL = process.env.IMAGE_MODEL || 'gemini-3.1-flash-image';  // set in the app's Models settings
 
 const STYLE = `Style: modern editorial pixel-art illustration, crisp square pixels, clean geometric shapes,
 flat colours only from this strict palette: coral #F57D6A, black #000000, warm off-white #F2F1F0,
@@ -32,7 +34,7 @@ light grey #D6D6D6, mid grey #7A7A7A. Plenty of negative space on a warm off-whi
 Calm, thoughtful, research-institute aesthetic. Absolutely no text, letters, numbers, logos or watermarks.`;
 
 const [name, aspect, subject] = process.argv.slice(2);
-const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
+const res = await fetch(`${BASE}/models/${MODEL}:generateContent`, {
   method: 'POST',
   headers: { 'Content-Type': 'application/json', 'x-goog-api-key': KEY },
   body: JSON.stringify({

@@ -27,7 +27,7 @@ generates illustrations (Nano Banana Flash) and music (Lyria).
 | 7. Write the graphics | edit `html/clips.js` | one `clip()` per beat |
 | 8. Check a frame | `node scripts/render-html.mjs <scene> --stills 4 --outdir /tmp/s` | PNG stills |
 | 9. Render graphics to MP4 | `./scripts/render-all.sh` | `public/clips/*.mp4` |
-| 10. Generate music | `node scripts/gen-music.mjs <name> lyria-3-pro-preview "<prompt>"` | `public/audio/<name>.mp3` |
+| 10. Generate music | `node scripts/gen-music.mjs <name> default "<prompt>"` (uses the music model chosen in settings) | `public/audio/<name>.mp3` |
 | 11. Build the music bed | `python3 scripts/music-mix.py <track> -21` | `public/audio/music_mix.wav` |
 | 12. Render the episode | `./scripts/render-final.sh out/episode.mp4` | the finished MP4 |
 

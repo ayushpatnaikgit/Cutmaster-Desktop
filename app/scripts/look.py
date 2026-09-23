@@ -22,7 +22,7 @@ with open(path, "rb") as f:
 
 body = {"contents": [{"parts": [{"inline_data": {"mime_type": mime, "data": data}}, {"text": question}]}]}
 req = urllib.request.Request(
-    f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+    f"{os.environ.get('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta')}/models/{model}:generateContent",
     data=json.dumps(body).encode(), headers={"Content-Type": "application/json", "x-goog-api-key": key},
 )
 try:

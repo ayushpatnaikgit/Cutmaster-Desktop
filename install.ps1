@@ -166,6 +166,6 @@ if (-not $up) { Die 'Cutmaster did not start. See: docker logs cutmaster-app' }
 
 Say "Cutmaster AI is running at http://localhost:$Port"
 Info "Put camera files in $HomeDir\media and use `"From disk`" with /media/<file name>."
-Info 'Add your Gemini API key under "API key" (bottom left) - get one at aistudio.google.com/apikey.'
+Info 'Add your Gemini API key under "Settings" (bottom left) - get one at aistudio.google.com/apikey.'
 Info "Manage it from a new terminal with: cutmaster start | stop | update | status"
 if ($env:CUTMASTER_NO_OPEN -ne '1') { Start-Process "http://localhost:$Port" }

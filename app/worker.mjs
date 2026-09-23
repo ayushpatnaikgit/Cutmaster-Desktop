@@ -7,6 +7,7 @@ import { ROOT, jobDir, getJob, updateJob, emit } from './lib/store.mjs';
 import { stageAssets } from './lib/assets.mjs';
 import { runOpenHands } from './drivers/openhands.mjs';
 import { runGemini } from './drivers/gemini.mjs';
+import { AGENT_USER } from './lib/sandbox.mjs';
 
 const id = process.argv[2];
 const log = (text, kind = 'worker') => { emit(id, { kind, text: String(text) }); console.log(text); };
@@ -109,8 +110,13 @@ scripts/ask-user.py only if the request is genuinely ambiguous.
 
 try {
   if (isRevision) prepareRevision(); else prepare();
+  // The agent runs as its own user (Docker): let it write its workspace.
+  if (AGENT_USER) {
+    try { execFileSync('chgrp', ['-Rf', 'studio', jobDir(id)]); } catch { /* files the agent made are already its group */ }
+    execFileSync('chmod', ['-Rf', 'g+rwX', jobDir(id)]);
+  }
   updateJob(id, { work });
-  const result = await driver({ job, work, jobPath: jobDir(id), taskFile: isRevision ? 'REVISION.md' : 'TASK.md', apiKey: process.env.GEMINI_API_KEY, log });
+  const result = await driver({ job, work, jobPath: jobDir(id), taskFile: isRevision ? 'REVISION.md' : 'TASK.md', token: process.env.CUTMASTER_JOB_TOKEN, log });
   log(`Driver finished: ${JSON.stringify(result)}`, 'status');
   process.exit(result?.ok === false ? 1 : 0);
 } catch (err) {
