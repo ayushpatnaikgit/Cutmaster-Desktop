@@ -1,7 +1,7 @@
 #!/bin/sh
 # Elyps AI installer for macOS and Linux.
 #
-#   curl -fsSL https://raw.githubusercontent.com/ayushpatnaikgit/Elyps/main/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/ayushpatnaikgit/Elyps-AI/main/install.sh | sh
 #
 # Sets up ~/Elyps (your footage folder and settings), downloads the app
 # as a Docker image, starts it and opens it in your browser. Your videos,

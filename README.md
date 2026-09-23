@@ -12,7 +12,9 @@ Drop in a recorded talk, say what you want, and get back a finished, on-brand vi
 
 <br>
 
-<img src="docs/hero.gif" width="720" alt="A typewriter intro: BIG IDEAS by XKDR, framed by coral braces">
+<a href="docs/elyps-demo.mp4"><img src="docs/demo.webp" width="860" alt="Demo: files are dropped into Elyps, a brief is typed, the agent plans, writes and renders graphics, and a finished explainer video plays"></a>
+
+<sub>▶ <a href="docs/elyps-demo.mp4"><b>Watch the 70-second demo with sound</b></a></sub>
 
 </div>
 
@@ -24,12 +26,12 @@ With **[Docker Desktop](https://www.docker.com/products/docker-desktop/)** runni
 
 **Mac · Linux**
 ```sh
-curl -fsSL https://raw.githubusercontent.com/ayushpatnaikgit/Elyps/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/ayushpatnaikgit/Elyps-AI/main/install.sh | sh
 ```
 
 **Windows** (PowerShell)
 ```powershell
-irm https://raw.githubusercontent.com/ayushpatnaikgit/Elyps/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/ayushpatnaikgit/Elyps-AI/main/install.ps1 | iex
 ```
 
 It opens in your browser. Click **Settings** (bottom left) and add a Gemini key from [aistudio.google.com/apikey](https://aistudio.google.com/apikey). Put big camera files in the `Elyps/media` folder in your home folder and use **From disk** → `/media/<file name>`. A full edit costs about **$1–4** in Gemini usage.
@@ -42,20 +44,20 @@ It opens in your browser. Click **Settings** (bottom left) and add a Gemini key 
 
 <table>
 <tr>
-<td width="50%"><img src="docs/frame-12.jpg" alt="Raw camera footage of the speaker"></td>
-<td width="50%"><img src="docs/frame-20.jpg" alt="The edited frame: the speaker on the left, an animated graphic with an illustration on the right"></td>
+<td width="50%"><img src="docs/frame-raw.jpg" alt="Raw interview footage of the speaker"></td>
+<td width="50%"><img src="docs/frame-edit.jpg" alt="The edited frame: the speaker on the left, an animated graphic with an illustration on the right"></td>
 </tr>
 <tr>
-<td align="center"><sub>What you drop in: a camera file and a mic recording</sub></td>
+<td align="center"><sub>What you drop in: a raw interview and a logo</sub></td>
 <td align="center"><sub>What you get: synced, branded, with a graphic for every idea</sub></td>
 </tr>
 </table>
 
 The brief for that video was one message:
 
-> *Edit this talk into an episode of Big Ideas by XKDR. Generate relevant graphics. Use the xkdr.org branding. Speaker is Mayank Manish from eGov Foundation.*
+> *Turn this interview into a short explainer for our channel, Earth, Explained. Add graphics at the key ideas, a clean intro and outro, and soft music. Use our logo and its colours.*
 
-The agent did the rest. It found the brand's colours and fonts on xkdr.org, synced the separate mic, read the whole talk, proposed a plan, drew the illustrations, animated each graphic to the second it's spoken, checked its own frames, and rendered the final 1080p video.
+The agent did the rest. It took the palette from the logo, read the whole interview, proposed a plan, designed its own intro and outro, drew the illustrations, composed the music, animated each graphic to the moment it's said, checked its own frames, and rendered the final 1080p video.
 
 <br>
 
@@ -97,7 +99,7 @@ Click any graphic, image or moment on the timeline and say what to change. Only 
 </table>
 
 <div align="center">
-<img src="docs/graphic.gif" width="720" alt="A graphic building beside the speaker as he talks">
+<img src="docs/graphic.gif" width="720" alt="A graphic building beside the speaker as she talks">
 <br><sub>Graphics sit beside the speaker, never over them, and each element arrives as it's said.</sub>
 </div>
 
@@ -107,14 +109,14 @@ Click any graphic, image or moment on the timeline and say what to change. Only 
 
 <table>
 <tr>
-<td><img src="docs/frame-45.jpg" alt="An illustration of a flooded district in Assam"></td>
-<td><img src="docs/frame-105.jpg" alt="A bar chart comparing need with money allocated, marked illustrative"></td>
-<td><img src="docs/frame-60.jpg" alt="A grid of districts with the question of which faces the most risk"></td>
+<td><img src="docs/gallery-1.jpg" alt="A Global Vantage Point: a satellite illustration beside the speaker"></td>
+<td><img src="docs/gallery-2.jpg" alt="The Observational Foundation: datasets building up beside the speaker"></td>
+<td><img src="docs/gallery-3.jpg" alt="An Interconnected Planet: a diagram of coupled climate feedbacks"></td>
 </tr>
 <tr>
-<td><img src="docs/frame-165.jpg" alt="A diagram of AI standardising and structuring data"></td>
-<td><img src="docs/frame-205.jpg" alt="A pull quote from the speaker in coral braces"></td>
-<td><img src="docs/frame-212.jpg" alt="The outro: the takeaway line framed by braces"></td>
+<td><img src="docs/gallery-4.jpg" alt="Reaction Rates and Forecasting: a chemistry framework graphic"></td>
+<td><img src="docs/gallery-5.jpg" alt="The takeaway card at the end of the video"></td>
+<td><img src="docs/gallery-6.jpg" alt="The intro title card the agent designed for the channel"></td>
 </tr>
 </table>
 
@@ -144,13 +146,13 @@ You need **[Docker Desktop](https://www.docker.com/products/docker-desktop/)** (
 **macOS · Linux**
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/ayushpatnaikgit/Elyps/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/ayushpatnaikgit/Elyps-AI/main/install.sh | sh
 ```
 
 **Windows** (PowerShell)
 
 ```powershell
-irm https://raw.githubusercontent.com/ayushpatnaikgit/Elyps/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/ayushpatnaikgit/Elyps-AI/main/install.ps1 | iex
 ```
 
 The installer:
@@ -253,7 +255,7 @@ elyps uninstall     # choose "y" to keep your videos, "delete" to remove everyth
 <summary><b>Run from source</b></summary>
 
 ```sh
-git clone https://github.com/ayushpatnaikgit/Elyps && cd Elyps
+git clone https://github.com/ayushpatnaikgit/Elyps-AI && cd Elyps
 cp .env.example .env          # optional: MEDIA_DIR, PORT
 docker compose up --build     # http://localhost:4322
 ```
@@ -328,4 +330,4 @@ Elyps renders video with [Remotion](https://www.remotion.dev), which is free for
 
 <br>
 
-<div align="center"><sub>The example video is from <b>Big Ideas by XKDR</b>, featuring Mayank Manish of eGov Foundation.</sub></div>
+<div align="center"><sub>Example footage: an interview with Dr. Lesley Ott, courtesy of <a href="https://svs.gsfc.nasa.gov/14553">NASA's Goddard Space Flight Center</a>. "Earth, Explained" is a made-up channel for the demo. NASA does not endorse Elyps.</sub></div>

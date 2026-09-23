@@ -1,6 +1,6 @@
 # Elyps AI installer for Windows (PowerShell).
 #
-#   irm https://raw.githubusercontent.com/ayushpatnaikgit/Elyps/main/install.ps1 | iex
+#   irm https://raw.githubusercontent.com/ayushpatnaikgit/Elyps-AI/main/install.ps1 | iex
 #
 # Sets up %USERPROFILE%\Elyps (your footage folder and settings), downloads
 # the app as a Docker image, starts it and opens it in your browser. Your

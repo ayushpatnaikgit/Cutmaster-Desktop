@@ -7,7 +7,7 @@ FROM python:3.13-slim-bookworm
 ARG VERSION=dev
 LABEL org.opencontainers.image.title="Elyps AI" \
       org.opencontainers.image.description="An AI video editor: drop a talk, describe the video, get a finished edit with branded graphics." \
-      org.opencontainers.image.source="https://github.com/ayushpatnaikgit/Elyps" \
+      org.opencontainers.image.source="https://github.com/ayushpatnaikgit/Elyps-AI" \
       org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.version="$VERSION"
 
