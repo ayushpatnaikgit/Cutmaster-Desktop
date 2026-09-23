@@ -59,6 +59,30 @@ The clip is rendered by seeking to each frame and taking a screenshot. So:
 - Web captures the lead gives you (`public/web/*.png|mp4`) can be framed as a
   browser window inside your graphic.
 
+## Illustrations that move
+
+A still picture that fades in is the weakest thing you can put on screen.
+Prefer illustrations **built in code**, so every part of them can move:
+
+- **Draw it as SVG.** A globe with a satellite tracing its orbit
+  (MotionPath), clouds drifting in layers, a wildfire spreading along a
+  ridge, a molecule assembling atom by atom, a city whose lights switch on
+  district by district, a river of data flowing between two systems. Build
+  the shapes from paths, gradients and masks in the brand palette; keep the
+  style flat and consistent (a few colours, rounded strokes, soft shadows).
+- **Let it perform the idea.** The motion should *be* the explanation: the
+  feedback loop actually loops, the rising line actually pushes the
+  temperature up, the orbit actually sweeps the whole planet.
+- **Keep it alive when it holds.** After it has built, a slow ambient motion
+  (a drift, a rotation, a pulse, twinkling lights) driven by
+  `S.draws.push((t) => …)` stops the frame from looking frozen.
+- **Generated images, animated.** When a painted look is better
+  (`scripts/gen-image.mjs`), don't just fade it in: reveal it through a
+  mask as it's named, add a gentle push-in or parallax, or lay animated SVG
+  on top of it (orbit lines, labels that point at parts, arrows that trace a
+  path). You can generate separate layers (a background and a subject, each
+  keyed out) and move them at different speeds.
+
 ## What good looks like
 
 - **One idea per graphic, landed hard.** A headline, a supporting line, and a
@@ -73,10 +97,21 @@ The clip is rendered by seeking to each frame and taking a screenshot. So:
   60–120 ms. No bounces, shakes, spins, flying particles or wipes.
 - **Rich, not busy.** Depth from soft shadows and layering; a subtle ambient
   motion (a slow drift, a breathing highlight) keeps a held frame alive.
+- **Use the whole column.** Once built, the graphic should span the full
+  height, from about y 110 to y 960. A half-empty column is the most common
+  failure: make the visual bigger rather than leaving space under it.
+- **Something on screen early.** The first visual element arrives within
+  about a second of the clip starting, not only the title.
 - **Readable.** Headlines 48–64 px, labels ≥ 22 px, strong contrast.
 - **Honest.** Numbers the speaker didn't give carry `illustrative(...)`.
   Quotes are exact transcript words.
 - The last 0.5 s fades out automatically; don't fight it.
+
+## Keep your context lean
+
+Every step re-sends everything you've seen, so print little: read the talk
+with `python3 scripts/read-transcript.py --from <s> --to <e>`, view files in
+ranges, and never print whole JSON files or logs.
 
 ## Prove it
 

@@ -14,7 +14,7 @@ os.environ.setdefault("OPENHANDS_SUPPRESS_BANNER", "1")
 
 from openhands.sdk import LLM, Agent, Conversation
 from openhands.sdk.context.agent_context import AgentContext
-from openhands.sdk.context.condenser import default_condenser
+from openhands.sdk.context.condenser import LLMSummarizingCondenser, default_condenser
 from openhands.sdk.conversation.visualizer import DefaultConversationVisualizer
 from openhands.sdk.conversation.visualizer.base import ConversationVisualizerBase
 from openhands.sdk.event import ActionEvent, MessageEvent
@@ -63,16 +63,32 @@ TERMINAL = Tool(name="TerminalTool", params={"no_change_timeout_seconds": 900})
 # ---- subagents: the lead agent hands self-contained jobs to these, several at
 # once (every `task` call in one step runs in parallel). Each reads its own
 # playbook in the workspace, works in the same sandbox, and reports back.
+QUICK_MODEL = os.environ.get("QUICK_MODEL") or model
+
+# name: (what it's for — the lead reads this, its standing instructions,
+#        max steps, which model: "lead" = the lead's own, "quick" = the cheaper one)
 SUBAGENTS = {
     "graphics": (
-        "Designs, animates, renders and checks ONE graphic (html/clips/<key>.js) from a brief. "
-        "Use one per graphic, several in parallel.",
+        "Designs, animates, renders and checks ONE new graphic (html/clips/<key>.js) from a brief, "
+        "or redesigns one. Use one per graphic, several in parallel.",
         "You are a motion designer on a video team. Read GRAPHICS.md in the workspace: it is how you "
         "work. You own exactly one graphic, named in your brief. Write only html/clips/<key>.js "
         "(and new images under public/img/ with your key as prefix). Never edit other clips, "
         "clips.js, scenes.js, episode.json or src/. Iterate until the frames look right, then "
         "reply with the key, what the graphic shows, when each element enters, and the stills you checked.",
-        160,
+        160, "lead",
+    ),
+    "quick-edit": (
+        "Makes ONE small, clear-cut change to an existing graphic: a colour, a word, a size, a "
+        "position, a timing, adding labels. Cheaper and faster than `graphics`. Not for new "
+        "graphics or redesigns.",
+        "You make one small, precise change to an existing graphic on a video team. Read the "
+        "sections 'Where your work goes', 'Every frame is a function of time' and 'Prove it' in "
+        "GRAPHICS.md. Open only the file named in your brief (html/clips/<key>.js), make exactly the "
+        "change asked for and nothing else, render one or two stills, look at them once with "
+        "scripts/look.py, fix anything broken, and reply with what you changed. If the change turns "
+        "out to need a redesign, stop and say so rather than attempting it.",
+        40, "quick",
     ),
     "research": (
         "Looks things up on the web (the speaker, an organisation, a claim in the talk, a site to "
@@ -80,13 +96,16 @@ SUBAGENTS = {
         "You are a researcher on a video team. Read RESEARCH.md in the workspace: it is how you work. "
         "Only report what a source says, with its URL. Save captures under public/web/. Reply with "
         "the facts (each with its source), and every capture you made with what it shows.",
-        80,
+        80, "quick",
     ),
 }
 
 
-def _subagent_factory(prompt, max_iter):
+def _subagent_factory(prompt, which):
     def factory(sub_llm):
+        if which == "quick":
+            # a cheaper model with light thinking, still through the key proxy
+            sub_llm = sub_llm.model_copy(update={"model": f"gemini/{QUICK_MODEL}", "reasoning_effort": "low", "usage_id": "quick"})
         return Agent(
             llm=sub_llm,
             tools=[TERMINAL, Tool(name="FileEditorTool")],
@@ -96,9 +115,9 @@ def _subagent_factory(prompt, max_iter):
     return factory
 
 
-for kind, (desc, prompt, max_iter) in SUBAGENTS.items():
+for kind, (desc, prompt, max_iter, which) in SUBAGENTS.items():
     try:
-        register_agent(kind, _subagent_factory(prompt, max_iter),
+        register_agent(kind, _subagent_factory(prompt, which),
                        AgentDefinition(name=kind, description=desc, tools=["TerminalTool", "FileEditorTool"],
                                        system_prompt=prompt, max_iteration_per_run=max_iter))
     except ValueError:  # already registered
@@ -110,6 +129,14 @@ agent = Agent(
     # several `task` calls in one step run at once: that is how graphics are
     # built in parallel
     tool_concurrency_limit=6,
+    # Every step re-sends the whole conversation, so an unchecked history is
+    # most of the cost (a test run: ~104K tokens per step by the end). Past
+    # 60K tokens, older steps are summarised; the system prompt and the task
+    # are always kept word for word.
+    condenser=LLMSummarizingCondenser(
+        llm=llm.model_copy(update={"usage_id": "condenser"}),
+        max_size=120, max_tokens=60000, keep_first=3,
+    ),
     system_prompt_kwargs={},
 )
 

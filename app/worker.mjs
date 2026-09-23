@@ -99,11 +99,19 @@ The person clicked on ${where} and wrote:
 > ${job.prompt}
 
 This workspace already holds the finished video and everything that made it
-(TASK.md is the original request). Make this change and only this change:
-find what produces that part, edit it, re-render just what it affects
-(\`./scripts/render-all.sh <scene>\` for one graphic, then the final cut), look
-at the result with scripts/look.py, and tell them what you changed. Ask with
-scripts/ask-user.py only if the request is genuinely ambiguous.
+(TASK.md is the original request). Make this change and only this change, and
+keep it cheap — don't re-read the project:
+
+1. Find what produces that part (a graphic is \`html/clips/<key>.js\`).
+2. Don't edit it yourself: hand it to a subagent with the \`task\` tool and a
+   short brief (the file, the change in their words, the timings if relevant).
+   A tweak — a colour, a word, a size, a timing, labels — goes to
+   \`quick-edit\`; a redesign or a new graphic goes to \`graphics\`.
+3. When it reports back, re-render just what it affects
+   (\`./scripts/render-all.sh <scene>\`, then the final cut), look at one frame
+   of the result with scripts/look.py, and tell them what you changed.
+
+Ask with scripts/ask-user.py only if the request is genuinely ambiguous.
 `);
   log(`Revising ${where}`, 'status');
 }

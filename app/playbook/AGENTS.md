@@ -16,7 +16,9 @@ a reference. The judgment is yours.
   audio streams. A separate audio file usually means an external mic that is
   cleaner than the camera audio — sync it (`scripts/sync-audio.py`) rather than
   guessing an offset.
-- Transcribe (`scripts/transcribe.py`). Read the whole transcript. You cannot
+- Transcribe (`scripts/transcribe.py`). Read the whole transcript with
+  `python3 scripts/read-transcript.py` (one line per sentence; never print
+  transcript.json — its per-word timings are ten times longer). You cannot
   choose good graphics for a talk you haven't understood.
 - If the request names a brand, organisation, series or website, **go and look
   it up**. Fetch the site, pull its stylesheet, find the colour variables and
@@ -63,9 +65,12 @@ frame, not a heading with a lonely shape under it.
   up most of the remaining height — a diagram with several labelled parts, a
   chart with every bar labelled, an illustration at 400–650px, a list whose
   items arrive as they're spoken.
-- **Illustrations, generously.** Generate them in one consistent style derived
-  from the brand palette (`scripts/gen-image.mjs`). Key their backgrounds out so
-  they sit on the page instead of in a grey box. Show them big.
+- **Illustrations, generously — and moving.** Prefer illustrations built as
+  animated SVG/HTML (a satellite orbiting, clouds drifting, a loop that loops)
+  so the motion explains the idea; ask for them in the briefs. Generated
+  images (`scripts/gen-image.mjs`) suit a painted look: one consistent style
+  from the brand palette, backgrounds keyed out, shown big, and brought to
+  life with masks, parallax or animated overlays rather than just faded in.
 - **Graphics are HTML.** Each one is a seekable animation in
   `html/clips/<key>.js`; GRAPHICS.md has the rules and the toolkit.
 - **Time to the words.** Each element enters when its word is spoken —
@@ -88,7 +93,15 @@ parallel**, so a whole set of graphics is built at once.
 
 - `graphics` — one per graphic. It designs, animates (HTML/CSS/SVG, GSAP,
   d3), renders stills and checks them, writing only `html/clips/<key>.js`.
+- `quick-edit` — one small, clear-cut change to an existing graphic (a
+  colour, a word, a size, a position, a timing, adding labels). It runs on a
+  cheaper model, so use it whenever the change fits in one sentence and
+  doesn't change what the graphic *is*.
 - `research` — web lookups and page captures (see RESEARCH.md).
+
+**Pick the cheapest agent that can do the job well.** A new graphic or a
+redesign → `graphics`. A tweak → `quick-edit`. If a quick edit comes back
+broken or says it needs a redesign, send it to `graphics` with the same brief.
 
 Before delegating graphics, do the shared work yourself: transcript, sync,
 footage, palette and fonts from the brand, `episode.json`, and the beat sheet
@@ -128,12 +141,22 @@ them before you call it done.
 ## 5. Long steps
 
 Anything that takes more than a couple of minutes — transcription, the footage
-transcode, rendering graphics, the final render — run detached and poll:
+transcode, rendering graphics, the final render — run detached and wait:
 
     ./scripts/run-long.sh final ./scripts/render-final.sh out/episode.mp4
-    ./scripts/check-long.sh final        # repeat until FINISHED
+    ./scripts/check-long.sh final        # waits up to 4 min; returns when done
 
+`check-long.sh` does the waiting for you, so call it again only when it says
+STILL RUNNING — don't poll with `ls`, `ps` or `sleep` in between. Better still,
+do other useful work (a graphics brief, the YouTube notes) while a job runs.
 Never finish while a detached job is still running.
+
+## 5b. Keep your context lean
+
+Every step you take re-sends everything you've seen so far, so a long printout
+costs you on every step after it. Print only what you need: `head`/`tail`,
+`--from/--to` ranges for the transcript, `grep` for the line you want, never
+whole JSON files, logs or minified files.
 
 ## 6. Deliver
 

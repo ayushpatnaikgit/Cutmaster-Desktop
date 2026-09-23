@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# Poll a detached command: waits up to ~60s, then reports progress or completion.
+# Wait on a detached command: returns as soon as it finishes, or after up to
+# 4 minutes with its progress. Each check costs a whole agent step, so this
+# waits rather than polls: call it again only if it says STILL RUNNING.
 # Usage: ./scripts/check-long.sh <name> [seconds_to_wait]
-name="$1"; wait_s="${2:-60}"
+name="$1"; wait_s="${2:-240}"
 [ -f "logs/$name.log" ] || { echo "no such job: $name"; exit 1; }
 for i in $(seq 1 "$wait_s"); do
   [ -f "logs/$name.done" ] && break

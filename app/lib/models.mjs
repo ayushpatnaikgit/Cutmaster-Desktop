@@ -9,6 +9,7 @@ const FILE = path.join(DATA, 'models.json');
 
 export const ROLES = {
   agent: { label: 'Agent', hint: 'Plans the edit, writes and runs the code. Flash is fast and cheap; Pro is stronger on hard problems.', default: 'gemini-3.8-flash' },
+  quick: { label: 'Quick edits & research', hint: 'Subagents for small, clear-cut changes (a colour, a label, timing) and for web research. A cheaper model with light thinking; the agent hands bigger work to its own model.', default: 'gemini-3.5-flash-lite' },
   look: { label: 'Frame checks', hint: 'Looks at rendered frames and critiques them.', default: 'gemini-3.1-pro-preview' },
   image: { label: 'Illustrations', hint: 'Generates illustrations (Nano Banana).', default: 'gemini-3.1-flash-image' },
   music: { label: 'Music', hint: 'Composes background music (Lyria).', default: 'lyria-3-pro-preview' },
@@ -35,7 +36,7 @@ export function setModels(patch) {
 
 /** Environment for a job's agent and scripts. */
 export const modelEnv = (m = getModels()) => ({
-  AGENT_MODEL: m.agent, LOOK_MODEL: m.look, IMAGE_MODEL: m.image, MUSIC_MODEL: m.music,
+  AGENT_MODEL: m.agent, QUICK_MODEL: m.quick, LOOK_MODEL: m.look, IMAGE_MODEL: m.image, MUSIC_MODEL: m.music,
 });
 
 // ---------- what the key can use ----------
@@ -67,6 +68,7 @@ export async function availableModels(apiKey) {
   const byNewest = (a, b) => (/latest/.test(a.id) - /latest/.test(b.id)) || b.id.localeCompare(a.id, undefined, { numeric: true });
   const list = {
     agent: gen.map(item).filter((m) => isText(m.id)).sort(byNewest),
+    quick: gen.map(item).filter((m) => isText(m.id)).sort(byNewest),
     look: gen.map(item).filter((m) => isText(m.id)).sort(byNewest),
     image: gen.map(item).filter((m) => /image/.test(m.id) && /^gemini-/.test(m.id)).sort(byNewest),
     // realtime models stream live audio; they can't make a whole track

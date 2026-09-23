@@ -66,6 +66,17 @@
   .composer .attach:hover { background:var(--hover); }
   .composer .send { margin-left:auto; width:38px; height:38px; border-radius:50%; border:0; background:var(--brand); color:#fff; display:grid; place-items:center; cursor:pointer; }
   .composer .send:disabled { background:var(--line); cursor:not-allowed; }
+  /* microphone: idle → recording (live level ring, timer) → transcribing */
+  .mic { position:relative; width:38px; height:38px; border-radius:50%; border:1px solid var(--line); background:var(--surface); color:var(--ink-2); display:grid; place-items:center; cursor:pointer; flex:none; }
+  .composer .mic { margin-left:auto; } .composer .mic + .send { margin-left:0; }
+  .mic:hover { background:var(--hover); }
+  .mic:focus-visible { outline:2px solid var(--brand); outline-offset:2px; }
+  .mic.rec { background:#e5484d; border-color:#e5484d; color:#fff; box-shadow:0 0 0 calc(3px + var(--lvl, 0) * 10px) rgba(229,72,77,.22); transition:box-shadow .08s linear; }
+  .mic.busy { color:var(--brand); }
+  .mic.busy svg { display:none; }
+  .mic.busy::after { content:''; width:16px; height:16px; border-radius:50%; border:2px solid var(--line); border-top-color:var(--brand); animation:spin .8s linear infinite; }
+  .mic-tip { position:absolute; bottom:calc(100% + 8px); right:0; white-space:nowrap; font:600 12px var(--sans); color:#fff; background:#16141f; padding:5px 9px; border-radius:7px; pointer-events:none; }
+  @media (prefers-reduced-motion:reduce) { .mic.rec { transition:none; } .mic.busy::after { animation:none; } }
   .files { display:flex; flex-wrap:wrap; gap:6px; padding:0 14px; }
   .file { display:inline-flex; align-items:center; gap:6px; height:28px; padding:0 6px 0 10px; border-radius:6px; background:var(--bg); font-size:12.5px; font-weight:600; }
   .file button { border:0; background:none; cursor:pointer; color:var(--muted); padding:0 4px; }
@@ -487,6 +498,58 @@ async function revise(target, prompt) {
 }
 
 /* ============================== composer */
+/** A microphone for a text box: speak, and the words land in the box (transcribed on this machine). */
+function micButton(ta) {
+  const b = h(`<button type="button" class="mic" aria-label="Dictate">${I.mic}</button>`);
+  let rec = null, stream = null, ctx = null, raf = 0, t0 = 0, lastLoud = 0, heard = false, tip = null;
+  const say = (text) => { tip?.remove(); tip = null; if (text) { tip = h(`<span class="mic-tip">${esc(text)}</span>`); b.appendChild(tip); } };
+  const insert = (text) => {
+    if (!text) return;
+    const a = ta.selectionStart ?? ta.value.length, z = ta.selectionEnd ?? a, before = ta.value.slice(0, a), after = ta.value.slice(z);
+    const piece = (before && !/\s$/.test(before) ? ' ' : '') + text + (after && !/^\s/.test(after) ? ' ' : '');
+    ta.value = before + piece + after; ta.selectionStart = ta.selectionEnd = (before + piece).length;
+    ta.dispatchEvent(new Event('input', { bubbles: true })); ta.focus();
+  };
+  const cleanup = () => { cancelAnimationFrame(raf); stream?.getTracks().forEach((t) => t.stop()); ctx?.close().catch(() => {}); stream = ctx = null; b.style.removeProperty('--lvl'); };
+  const stop = () => { if (rec && rec.state === 'recording') rec.stop(); };
+  async function start() {
+    try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }); }
+    catch (e) { say(e.name === 'NotAllowedError' ? 'Microphone blocked — allow it in the browser’s site settings' : 'No microphone found'); setTimeout(() => say(''), 4000); return; }
+    fetch('/api/dictate/warm', { method: 'POST' }).catch(() => {});   // load the model while you talk
+    const type = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'].find((t) => window.MediaRecorder?.isTypeSupported?.(t)) || '';
+    rec = new MediaRecorder(stream, type ? { mimeType: type } : undefined);
+    const chunks = [];
+    rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+    rec.onstop = async () => {
+      cleanup(); b.classList.remove('rec'); b.classList.add('busy'); b.setAttribute('aria-label', 'Transcribing'); say('Transcribing…');
+      try {
+        const blob = new Blob(chunks, { type: rec.mimeType || 'audio/webm' });
+        const r = await fetch('/api/dictate', { method: 'POST', headers: { 'content-type': blob.type }, body: blob });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || 'Transcription failed');
+        if (d.text) { insert(d.text); say(''); } else { say('Didn’t catch that — try again'); setTimeout(() => say(''), 2500); }
+      } catch (e) { say(e.message); setTimeout(() => say(''), 4000); }
+      finally { b.classList.remove('busy'); b.setAttribute('aria-label', 'Dictate'); rec = null; }
+    };
+    // a live level meter, and stop after ~2.5 s of quiet once you've spoken
+    ctx = new AudioContext(); const an = ctx.createAnalyser(); an.fftSize = 512; ctx.createMediaStreamSource(stream).connect(an);
+    const data = new Uint8Array(an.fftSize); t0 = lastLoud = performance.now(); heard = false;
+    const tick = (now) => {
+      an.getByteTimeDomainData(data);
+      let peak = 0; for (const v of data) peak = Math.max(peak, Math.abs(v - 128) / 128);
+      b.style.setProperty('--lvl', Math.min(1, peak * 2.2).toFixed(2));
+      if (peak > 0.06) { lastLoud = now; heard = true; }
+      const secs = Math.floor((now - t0) / 1000);
+      say(`Listening… ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')} · click to stop`);
+      if ((heard && now - lastLoud > 2500) || now - t0 > 120000) return stop();
+      raf = requestAnimationFrame(tick);
+    };
+    rec.start(250); b.classList.add('rec'); b.setAttribute('aria-label', 'Stop dictating'); raf = requestAnimationFrame(tick);
+  }
+  b.onclick = () => { if (b.classList.contains('busy')) return; rec ? stop() : start(); };
+  b.onkeydown = (e) => { if (e.key === 'Escape' && rec) { rec.onstop = () => { cleanup(); b.classList.remove('rec'); say(''); rec = null; }; rec.stop(); } };
+  return b;
+}
 function composer({ placeholder, onSend, attach = true }) {
   const el = h(`<div class="composer"><div class="files"></div><textarea rows="1" placeholder="${esc(placeholder)}"></textarea>
     <div class="bar">${attach ? `
@@ -495,6 +558,7 @@ function composer({ placeholder, onSend, attach = true }) {
       <label class="attach">${I.image} Images<input type="file" accept="image/*" multiple hidden data-kind="image"></label>
       <button class="attach" data-link>${I.link} From disk</button>` : ''}
       <button class="send" disabled aria-label="Send">${I.send}</button></div></div>`);
+  el.querySelector('.send').before(micButton(el.querySelector('textarea')));
   const ta = el.querySelector('textarea'), send = el.querySelector('.send'), files = el.querySelector('.files');
   const picked = { video: [], audio: [], image: [], links: [] };
   const redraw = () => {
@@ -579,6 +643,7 @@ async function home() {
           <div class="row">
             <button class="btn quiet small" id="fromdisk">${I.link} From disk</button>
             <span class="hintline">I'll propose a plan before I make anything</span>
+            <span id="homemic"></span>
             <button class="btn" id="startbtn" disabled>Start editing <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
           </div>
         </div>
@@ -597,6 +662,7 @@ async function home() {
     : f.type.startsWith('audio/') || /\.(wav|mp3|m4a|aac)$/i.test(f.name) ? 'audio'
       : f.type.startsWith('image/') || /\.(png|jpe?g|webp|svg)$/i.test(f.name) ? 'image' : null);
   const brief = $('#brief'), start = $('#startbtn'), list = $('#picked');
+  $('#homemic').replaceWith(micButton(brief));
   const redraw = () => {
     list.innerHTML = '';
     const all = [...picked.video.map((f) => ['video', f.name, f]), ...picked.audio.map((f) => ['audio', f.name, f]),
@@ -824,6 +890,7 @@ async function chat(p, jobs) {
     if (/sync-audio/.test(c)) return 'Syncing the camera and the mic';
     if (/transcribe/.test(c)) return 'Transcribing the talk';
     if (/find-words/.test(c)) return 'Finding when each idea is said';
+    if (/read-transcript/.test(c)) return 'Reading the talk';
     if ((m = c.match(/ask-user\.py.*--type\s+(\w+)/))) return m[1] === 'beats' ? 'Sending you the plan' : m[1] === 'options' ? 'Sending you some options' : 'Asking you a question';
     if (/prepare-footage/.test(c)) return 'Preparing the footage';
     if ((m = c.match(/gen-image\.mjs\s+(\S+)/))) return `Drawing an illustration: ${pretty(m[1])}`;

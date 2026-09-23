@@ -19,6 +19,7 @@ import { usageSummary, getPrices, setPrices, recordUsage } from './lib/usage.mjs
 import { doctor, resetDoctor, version } from './lib/doctor.mjs';
 import { ROLES, getModels, setModels, availableModels } from './lib/models.mjs';
 import { geminiProxy, newJobToken, proxyBase, stopAgent, explainGeminiError, AGENT_USER } from './lib/sandbox.mjs';
+import { dictate, warmDictation } from './lib/dictate.mjs';
 
 const app = express();
 const PORT = process.env.PORT || 4321;
@@ -110,6 +111,15 @@ app.put('/api/models', (req, res) => {
 // ---------- system check ----------
 app.get('/api/doctor', async (req, res) => res.json(await doctor({ fresh: req.query.fresh === '1' })));
 app.get('/api/version', (req, res) => res.json({ version: version() }));
+
+// The prompt box's microphone: a recording in, text out, transcribed on this
+// machine. /warm loads the model when the mic is first pressed, so the first
+// real request doesn't wait on it.
+app.post('/api/dictate/warm', async (req, res) => { const r = await warmDictation(); res.json({ ready: !r.error, error: r.error }); });
+app.post('/api/dictate', express.raw({ type: () => true, limit: '40mb' }), async (req, res) => {
+  if (!req.body?.length) return res.status(400).json({ error: 'No audio received' });
+  try { res.json(await dictate(req.body, req.headers['content-type'] || '')); } catch (e) { res.status(500).json({ error: e.message }); }
+});
 // Refuse to start work the machine can't finish.
 const blocked = async () => {
   const d = await doctor();
@@ -450,7 +460,10 @@ function pump() {
     clearInterval(watch);
     stopAgent();   // nothing of the agent's outlives its job
     const j = getJob(id);
-    const done = fs.existsSync(path.join(jobDir(id), 'work', 'out', 'episode.mp4'));
+    // a revision works in its base job's workspace, and counts as done only
+    // if it re-rendered the video during this run
+    const out = path.join(workOf(id), 'out', 'episode.mp4');
+    const done = fs.existsSync(out) && (!j.baseJob || fs.statSync(out).mtimeMs >= Date.parse(j.startedAt || 0));
     const final = j.status === 'cancelled' ? 'cancelled' : done ? 'done' : (j.status === 'running' ? 'failed' : j.status);
     updateJob(id, { status: final, finishedAt: new Date().toISOString() });
     emit(id, { kind: 'status', text: `Worker finished (${final})` });
