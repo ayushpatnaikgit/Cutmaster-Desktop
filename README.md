@@ -1,24 +1,133 @@
-# Cutmaster AI — Desktop
+<div align="center">
 
-An AI video editor that runs on your own machine. Drop in a camera file and a
-separate audio recording, describe the video you want, and an agent syncs the
-audio, transcribes the talk, proposes a plan, generates illustrations and
-music, animates graphics timed to the speaker's words, and renders a finished
-1080p MP4 — stopping to ask you whenever a decision is yours.
+<img src="docs/logo.svg" width="84" alt="">
 
-It runs as a local web app: start it, then open it in your browser.
+# Cutmaster AI
+
+### An AI video editor that edits like a person
+
+Drop in a recorded talk, say what you want, and get back a finished, on-brand video with animated graphics timed to every word.
+
+[Install](#install) · [What it does](#what-it-does) · [How it works](#how-it-works) · [Costs](#costs) · [Privacy](#privacy-and-safety)
+
+<br>
+
+<img src="docs/hero.gif" width="720" alt="A typewriter intro: BIG IDEAS by XKDR, framed by coral braces">
+
+</div>
+
+<br>
+
+## From this, to this
+
+<table>
+<tr>
+<td width="50%"><img src="docs/frame-12.jpg" alt="Raw camera footage of the speaker"></td>
+<td width="50%"><img src="docs/frame-20.jpg" alt="The edited frame: the speaker on the left, an animated graphic with an illustration on the right"></td>
+</tr>
+<tr>
+<td align="center"><sub>What you drop in: a camera file and a mic recording</sub></td>
+<td align="center"><sub>What you get: synced, branded, with a graphic for every idea</sub></td>
+</tr>
+</table>
+
+The brief for that video was one message:
+
+> *Edit this talk into an episode of Big Ideas by XKDR. Generate relevant graphics. Use the xkdr.org branding. Speaker is Mayank Manish from eGov Foundation.*
+
+The agent did the rest. It found the brand's colours and fonts on xkdr.org, synced the separate mic, read the whole talk, proposed a plan, drew the illustrations, animated each graphic to the second it's spoken, checked its own frames, and rendered the final 1080p video.
+
+<br>
+
+## What it does
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+**🎙️ Syncs and cleans the sound**<br>
+Lines up a separate mic recording with the camera to within a frame, and levels it for YouTube.
+
+**📖 Understands the talk**<br>
+Transcribes every word with timings, then reads the whole thing before deciding anything.
+
+**🎨 Finds your brand**<br>
+Name a website and it pulls the colours, fonts and logo from it. Or use what's in your brand kit.
+
+**✋ Asks before it builds**<br>
+You get a plan first: a beat-by-beat list of what's said and the graphic it proposes. Approve it or redirect it.
+
+</td>
+<td width="50%" valign="top">
+
+**✏️ Writes its own animations**<br>
+Every graphic is custom code, written for that idea: charts, diagrams, illustrations, quotes. Nothing is picked from a template.
+
+**🖼️ Makes illustrations and music**<br>
+Illustrations in one consistent style, generated with Nano Banana. Background music composed with Lyria.
+
+**👀 Checks its own work**<br>
+Renders frames, looks at them with a vision model, and fixes whatever looks empty, cramped or off-brand.
+
+**🖱️ Lets you change anything**<br>
+Click any graphic, image or moment on the timeline and say what to change. Only that part is redone.
+
+</td>
+</tr>
+</table>
+
+<div align="center">
+<img src="docs/graphic.gif" width="720" alt="A graphic building beside the speaker as he talks">
+<br><sub>Graphics sit beside the speaker, never over them, and each element arrives as it's said.</sub>
+</div>
+
+<br>
+
+### A few frames from one edit
+
+<table>
+<tr>
+<td><img src="docs/frame-45.jpg" alt="An illustration of a flooded district in Assam"></td>
+<td><img src="docs/frame-105.jpg" alt="A bar chart comparing need with money allocated, marked illustrative"></td>
+<td><img src="docs/frame-60.jpg" alt="A grid of districts with the question of which faces the most risk"></td>
+</tr>
+<tr>
+<td><img src="docs/frame-165.jpg" alt="A diagram of AI standardising and structuring data"></td>
+<td><img src="docs/frame-205.jpg" alt="A pull quote from the speaker in coral braces"></td>
+<td><img src="docs/frame-212.jpg" alt="The outro: the takeaway line framed by braces"></td>
+</tr>
+</table>
+
+<br>
+
+## The app
+
+<table>
+<tr>
+<td width="50%"><img src="docs/app-home.png" alt="The home page: drop files, write a brief"></td>
+<td width="50%"><img src="docs/app-project.png" alt="A finished video with its timeline of graphics"></td>
+</tr>
+<tr>
+<td align="center"><sub><b>Start</b>: drop your files and write a brief, the way you'd brief an editor</sub></td>
+<td align="center"><sub><b>Finish</b>: watch the cut, then click any block on the timeline to change it</sub></td>
+</tr>
+</table>
+
+It runs on your own computer and opens in your browser.
+
+<br>
 
 ## Install
 
-You need **Docker**: [Docker Desktop](https://www.docker.com/products/docker-desktop/) on Mac and Windows, or Docker Engine on Linux. Install it, open it once, then run the installer.
+You need **[Docker Desktop](https://www.docker.com/products/docker-desktop/)** (Mac and Windows) or Docker Engine (Linux). Install it, open it once, then run:
 
-**macOS / Linux**
+**macOS · Linux**
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/ayushpatnaikgit/Cutmaster-Desktop/main/install.sh | sh
 ```
 
-**Windows (PowerShell)**
+**Windows** (PowerShell)
 
 ```powershell
 irm https://raw.githubusercontent.com/ayushpatnaikgit/Cutmaster-Desktop/main/install.ps1 | iex
@@ -26,122 +135,176 @@ irm https://raw.githubusercontent.com/ayushpatnaikgit/Cutmaster-Desktop/main/ins
 
 The installer:
 
-1. creates a `Cutmaster` folder in your home folder, with a `media` folder inside it for your footage;
-2. downloads the app (a few GB, once);
-3. starts it and opens **http://localhost:4322** in your browser.
+1. creates a **Cutmaster** folder in your home folder, with a `media` folder for your footage;
+2. downloads the app (a few GB, once; Intel and Apple Silicon both supported);
+3. opens **http://localhost:4322** in your browser.
 
-If port 4322 is taken, it uses the next free one.
+Then:
 
-Click **API key** (bottom left) and paste a [Gemini API key](https://aistudio.google.com/apikey). That one key runs the agent, the illustrations (Nano Banana) and the music (Lyria). It is stored encrypted on your computer.
+1. Click **API key** (bottom left) and paste a [Gemini API key](https://aistudio.google.com/apikey). That one key runs the agent, the illustrations and the music.
+2. Put your camera file and mic recording in `Cutmaster/media`.
+3. On the home page choose **From disk**, enter `/media/<file name>` for each file, write your brief, and press **Start editing**.
 
-Then drop your footage on the home page, write a brief the way you'd brief an editor, and press **Start editing**.
+> [!TIP]
+> In Docker Desktop, go to **Settings → Resources** and give it **8 GB of memory** or more. Rendering 1080p video with a browser engine needs room. If anything is missing, the app's built-in system check tells you what and how to fix it.
 
 ### Everyday commands
 
+| Command | What it does |
+|---|---|
+| `cutmaster start` | Start it and open the browser |
+| `cutmaster stop` | Stop it (it also stops when Docker quits) |
+| `cutmaster update` | Get the latest version; your videos are kept |
+| `cutmaster status` | Is it running, and is everything it needs working? |
+| `cutmaster logs` | What it's doing right now |
+| `cutmaster media` | Open your footage folder |
+| `cutmaster uninstall` | Remove it, keeping your videos unless you say otherwise |
+
+<br>
+
+## How it works
+
+```mermaid
+flowchart LR
+    A["🎥 Camera + 🎙️ mic<br>+ your brief"] --> B["Sync, transcribe,<br>read the talk"]
+    B --> C["Research the brand"]
+    C --> D{"Plan<br>for you to approve"}
+    D -->|"change it"| C
+    D -->|"looks good"| E["Write graphics as code<br>+ draw illustrations<br>+ compose music"]
+    E --> F["Render frames,<br>look, fix"]
+    F --> E
+    F --> G["🎬 Final 1080p MP4<br>+ YouTube title and chapters"]
+    G -->|"click anything to change it"| E
+```
+
+The editor is an agent. It works in its own sandbox, with a terminal, a code editor and a set of tools: sync, transcription, image and music generation, an HTML-to-video renderer and a Remotion timeline. It decides what to run, writes the code for each graphic, runs it, looks at the result and iterates, the way a human motion designer would, only faster.
+
 | | |
 |---|---|
-| `cutmaster start` | start it and open the browser |
-| `cutmaster stop` | stop it (it also stops when Docker quits) |
-| `cutmaster update` | download the latest version; your videos are kept |
-| `cutmaster status` | is it running, and is everything it needs working? |
-| `cutmaster logs` | what it's doing right now |
-| `cutmaster media` | open your footage folder |
-| `cutmaster uninstall` | remove it, keeping your videos unless you say otherwise |
+| **Agent** | [OpenHands](https://github.com/OpenHands/OpenHands) driving **Gemini 3.8 Flash** |
+| **Checking frames** | Gemini 3.1 Pro |
+| **Illustrations** | Nano Banana (Gemini image generation) |
+| **Music** | Lyria 3 |
+| **Transcription** | Whisper (faster-whisper), on your machine |
+| **Video** | Remotion, ffmpeg and Chromium, on your machine |
 
-The app is only reachable from your own computer (it listens on `127.0.0.1`).
+How the agent is told to work, from understanding the brief to its quality bar, is plain English in [`app/playbook/AGENTS.md`](app/playbook/AGENTS.md). It's the thing to tune.
 
-### From source (developers)
+<br>
 
-```bash
-cp .env.example .env          # optional: set MEDIA_DIR to your footage folder
-docker compose up --build     # the first build installs a browser and the agent
+## Costs
+
+The app is free. The AI runs on **your own Gemini API key**, so you pay Google directly for what you use:
+
+| | Typical cost |
+|---|---|
+| A full edit of a 3–4 minute talk | **about $1–3** |
+| Each illustration | $0.07 |
+| Each music track | $0.08 |
+| Sync, transcription, rendering | free, on your computer |
+
+The **Usage** page shows what each video cost, and you can set a monthly budget.
+
+<br>
+
+## Privacy and safety
+
+- **Your footage stays on your computer.** It's read in place from your media folder and never uploaded. Only text, frames the agent checks, and generation prompts go to Google's API.
+- **Your key is stored encrypted**, in a Docker volume on your machine.
+- **The agent is sandboxed.** It runs code it writes itself, so it runs as an unprivileged user inside the container. It can't see your files outside the media folder, which it can only read. The app only listens on `127.0.0.1`, so nobody else on your network can reach it.
+- **Not yet done:** inside its sandbox the agent can read your Gemini key. A web page it reads while researching a brand could, in principle, try to trick it into leaking the key. Isolating the key from the agent is the next release.
+
+<br>
+
+## Your data
+
+Projects, every job's working files, your brand kit, usage records and your key all live in a Docker volume. Updating or reinstalling never touches it.
+
+```sh
+cutmaster uninstall     # choose "y" to keep your videos, "delete" to remove everything
 ```
 
-### Large camera files
+<br>
 
-Uploading a 1 GB camera file through the browser is slow and pointless when
-it's already on your disk. Put your footage in the `media` folder (`~/Cutmaster/media`
-after installing; `MEDIA_DIR` when running from source). It's mounted read-only
-at `/media` inside the app. On the home page choose **From disk** and enter
-`/media/<file name>`.
+## For developers
 
-## What's inside
+<details>
+<summary><b>Run from source</b></summary>
 
-```
-app/        the web app, job queue and agent drivers (Node)
-  server.mjs        HTTP API, uploads, projects, assets, usage, live event stream
-  worker.mjs        prepares a workspace per job and runs the agent in it
-  drivers/          OpenHands (default) and a dependency-free Gemini loop
-  playbook/AGENTS.md  how the agent is told to work — the thing to tune
-  public/index.html the whole UI
-pipeline/   the editing toolkit copied into every job's workspace
-  scripts/          audio sync, transcription, image/music generation,
-                    HTML→MP4 graphics rendering, music mixing, final render
-  html/             the graphics library (intro/outro scenes, helpers)
-  src/              the Remotion edit
+```sh
+git clone https://github.com/ayushpatnaikgit/Cutmaster-Desktop && cd Cutmaster-Desktop
+cp .env.example .env          # optional: MEDIA_DIR, PORT
+docker compose up --build     # http://localhost:4322
 ```
 
-The agent is [OpenHands](https://github.com/OpenHands/OpenHands) driving
-`gemini-3.8-flash`, with `gemini-3.1-pro-preview` reviewing rendered frames.
-Both are set in `app/`; the model is also selectable per job.
+Without Docker (you need Node 22, Python 3.12+, ffmpeg, ImageMagick and Chrome):
 
-## Using it
+```sh
+./scripts/setup-local.sh
+cd app && node server.mjs
+```
 
-- **Home** — drop files (videos, audio, photos), write a brief, start.
-- **A video** — the agent's conversation in the centre; it asks you for a plan
-  and for a look before it builds. The timeline along the bottom fills in as
-  graphics render. **Click any block, image or moment to change just that.**
-- **Brand** — logos, fonts, music and reference images shared by every video.
-- **Usage** — estimated Gemini spend per video, editable prices, a monthly budget.
+> [!WARNING]
+> Without Docker there is no sandbox: the agent runs code with your user's permissions. Only do this on a machine you're comfortable handing a shell to.
 
-## Configuration
+</details>
+
+<details>
+<summary><b>What's where</b></summary>
+
+```
+app/                  the web app, job queue and agent drivers (Node)
+  server.mjs            HTTP API, uploads, projects, assets, usage, live events
+  worker.mjs            prepares a workspace per job and runs the agent in it
+  drivers/              OpenHands (default) and a dependency-free Gemini loop
+  playbook/AGENTS.md    how the agent is told to work
+  lib/doctor.mjs        the system check behind the home-page banner
+  public/index.html     the whole UI
+pipeline/             the editing toolkit copied into every job's workspace
+  scripts/              sync, transcription, image and music generation,
+                        HTML→MP4 graphics, music mixing, final render
+  html/                 the graphics library: intro and outro scenes, helpers
+  src/                  the Remotion edit
+install.sh, install.ps1  the installers
+```
+
+</details>
+
+<details>
+<summary><b>Configuration</b></summary>
 
 | Variable | Default | What it does |
 |---|---|---|
 | `PORT` | `4322` | Port the app is served on |
-| `MEDIA_DIR` | `./media` | Host folder mounted read-only at `/media` |
+| `MEDIA_DIR` | `./media` | Host folder mounted read-only at `/media` (from source) |
 | `ASK_TIMEOUT` | `7200` | Seconds the agent waits for your answer before deciding alone |
-| `DATA_DIR` | `/data` (in Docker) | Where projects, jobs, assets and the key are stored |
+| `DATA_DIR` | `/data` | Projects, jobs, assets and the key |
 | `PIPELINE_DIR` | `/app/pipeline` | The toolkit copied into each job |
-| `OPENHANDS_PYTHON` | `python` (in Docker) | Python that has `openhands-ai` installed |
-| `CHROME_PATH` | `/usr/bin/chromium` | Browser used to render HTML graphics |
+| `OPENHANDS_PYTHON` | `python` | Python with `openhands-ai` installed |
+| `CHROME_PATH` | `/usr/bin/chromium` | Browser used to render graphics |
 
-## Your data
+Installer options: `CUTMASTER_HOME`, `CUTMASTER_PORT`, `CUTMASTER_IMAGE` and `CUTMASTER_NO_OPEN=1`.
 
-Everything the app creates lives in the `cutmaster-data` Docker volume:
-projects, job workspaces (with every intermediate file), the brand kit, usage
-records and your Gemini key — encrypted at rest with a key generated on first
-run. Rebuilding the image doesn't touch it.
+</details>
 
-```bash
-docker compose down            # stop, keep data
-docker compose down -v         # stop and delete all data, including your key
-```
+<details>
+<summary><b>Releasing</b></summary>
 
-## Running without Docker
-
-You need Node 22, Python 3.12 or 3.13, ffmpeg, ImageMagick and Chrome.
-
-```bash
-./scripts/setup-local.sh       # installs dependencies into app/ and pipeline/
-cd app && node server.mjs      # http://localhost:4322
-```
-
-## Releasing
-
-`.github/workflows/release.yml` builds the image for Intel/AMD and Apple Silicon on native runners and smoke-tests each build: every tool the agent needs must pass the system check. It then publishes one multi-architecture image to `ghcr.io/ayushpatnaikgit/cutmaster-desktop`.
+[`.github/workflows/release.yml`](.github/workflows/release.yml) builds the image on native Intel and Apple Silicon runners. It smoke-tests each build (every tool the agent needs must pass the system check), then publishes one multi-architecture image to `ghcr.io/ayushpatnaikgit/cutmaster-desktop`.
 
 - Push to `main` → `:edge`
-- Tag `vX.Y.Z` → `:X.Y.Z`, `:X.Y` and `:latest`
+- Tag `vX.Y.Z` → `:X.Y.Z`, `:X.Y` and `:latest` (what the installers use)
 
-The installers pull `:latest`. After the first release, set the package to **public** under GitHub → Packages → cutmaster-desktop → Package settings, so the installers can download it without logging in.
+</details>
 
-## Security
-
-The agent runs commands it writes itself. In Docker it does so as an
-unprivileged user inside the container, with your footage mounted read-only.
-Run without Docker only on a machine you're comfortable handing a shell to.
+<br>
 
 ## Licence
 
-MIT — see [LICENSE](LICENSE).
+MIT; see [LICENSE](LICENSE).
+
+Cutmaster renders video with [Remotion](https://www.remotion.dev), which is free for individuals and companies of up to three people. Larger organisations need a [Remotion company licence](https://www.remotion.pro).
+
+<br>
+
+<div align="center"><sub>The example video is from <b>Big Ideas by XKDR</b>, featuring Mayank Manish of eGov Foundation.</sub></div>
