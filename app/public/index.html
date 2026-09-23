@@ -183,7 +183,7 @@
   .steps.idle .spin { animation:none; border-color:var(--ok); }
   @keyframes spin { to { transform:rotate(360deg); } }
   @media (prefers-reduced-motion:reduce) { .steps .spin { animation:none; } }
-  .steps ol { margin:0; padding:0 14px 12px 34px; font:400 12px/1.7 var(--mono); color:var(--ink-2); max-height:260px; overflow:auto; }
+  .steps ol { margin:0; padding:0 14px 12px 34px; font:400 13.5px/1.75 var(--sans); color:var(--ink-2); max-height:260px; overflow:auto; }
   .ask { border:1px solid #f3d9ae; background:var(--warn-tint); border-radius:var(--r-lg); padding:14px; display:grid; gap:10px; }
   .ask b { color:var(--warn); }
   .ask pre { margin:0; background:var(--surface); border-radius:var(--r); padding:10px 12px; max-height:320px; overflow:auto; font:400 12px/1.55 var(--mono); white-space:pre-wrap; }
@@ -784,11 +784,63 @@ async function chat(p, jobs) {
   const note = (text) => add(h(`<div class="note">${esc(text)}</div>`));
   const targetLabel = (t) => !t ? '' : t.type === 'clip' ? `On ${t.label} · ${tc(t.start)}–${tc(t.end)}` : t.type === 'time' ? `At ${tc(t.t)}` : t.type === 'asset' ? `On ${t.name}` : '';
 
+  // What a command is for, in plain words. The chat shows these, not the
+  // commands: nobody should feel they've been dropped into a terminal.
+  const pretty = (key) => String(key || '').replace(/^clip/, '').replace(/^(earth|light)?(Intro|Outro).*/i, (m, a, b) => b.toLowerCase()).replace(/[_-]+/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').trim();
+  const waitingFor = (name) => /transcri/.test(name) ? 'the transcript' : /final/.test(name) ? 'the final render' : /clip|render/.test(name) ? 'the graphics to render' : 'a background job';
+  const GENERIC = 'Working on the edit';
+  const GERUND = { check: 'Checking', inspect: 'Inspecting', print: 'Reading', list: 'Looking at', probe: 'Looking at', read: 'Reading', view: 'Looking at', extract: 'Extracting', mark: 'Noting', render: 'Rendering', 're-render': 'Re-rendering', critique: 'Checking', review: 'Reviewing', generate: 'Generating', update: 'Updating', 're-export': 'Updating', export: 'Exporting', wait: 'Waiting', send: 'Sending', prepare: 'Preparing', apply: 'Applying', write: 'Writing', start: 'Starting', create: 'Creating', compose: 'Composing', mix: 'Mixing', fix: 'Fixing', adjust: 'Adjusting', verify: 'Verifying', confirm: 'Confirming', find: 'Finding', build: 'Building', add: 'Adding', remove: 'Removing', trim: 'Trimming', sync: 'Syncing', measure: 'Measuring', compare: 'Comparing', test: 'Testing', try: 'Trying', design: 'Designing', draw: 'Drawing', make: 'Making', set: 'Setting', tune: 'Tuning', polish: 'Polishing' };
+  /** The agent's summary as a friendly line, or null if it's too technical to show. */
+  function plainSummary(text) {
+    let t = String(text).trim().replace(/\s+(with|using|via)\s+\S+\.(py|mjs|js|sh)\b/gi, '').replace(/\bclip([A-Z]\w*)/g, (m, n) => pretty(n));
+    if (/[{}"\\\/_=<>|$]|\.\w{2,5}\b|\b[A-Z]{3,}\b|^\w+:/.test(t)) return null;
+    // a few words people don't need to know
+    t = t.replace(/\brms power\b/gi, 'loudness').replace(/\bremotion\b/gi, 'render').replace(/\bmp4s?\b/gi, 'videos')
+      .replace(/\bcontainer duration\b/gi, 'video length').replace(/\bconvert command\b/gi, 'image tools').replace(/\bclip videos\b/gi, 'graphic videos');
+    if (/^(return|cd|go back|change directory)\b/i.test(t)) return null;
+    const [first, ...rest] = t.split(' ');
+    const g = GERUND[first.toLowerCase()];
+    if (g) t = [g, ...rest].join(' ');
+    return t.length > 70 ? t.slice(0, 67) + '…' : t;
+  }
+  function stepLabel(c) {
+    let m;
+    if ((m = c.match(/check-long\.sh\s+(\S+)/))) return `Waiting for ${waitingFor(m[1])}`;
+    if ((m = c.match(/run-long\.sh\s+(\S+)/))) return /final/.test(m[1]) ? 'Rendering the final video' : /transcri/.test(m[1]) ? 'Transcribing the talk' : /clip|render/.test(m[1]) ? 'Rendering the graphics' : 'Starting a long job';
+    if (/render-final/.test(c)) return 'Rendering the final video';
+    if (/sync-audio/.test(c)) return 'Syncing the camera and the mic';
+    if (/transcribe/.test(c)) return 'Transcribing the talk';
+    if (/find-words/.test(c)) return 'Finding when each idea is said';
+    if ((m = c.match(/ask-user\.py.*--type\s+(\w+)/))) return m[1] === 'beats' ? 'Sending you the plan' : m[1] === 'options' ? 'Sending you some options' : 'Asking you a question';
+    if (/prepare-footage/.test(c)) return 'Preparing the footage';
+    if ((m = c.match(/gen-image\.mjs\s+(\S+)/))) return `Drawing an illustration: ${pretty(m[1])}`;
+    if (/gen-music/.test(c)) return 'Composing the music';
+    if (/music-mix/.test(c)) return 'Mixing the music under the voice';
+    if ((m = c.match(/look\.py\s+\S*?([A-Za-z]+)_\d+\.png/))) return `Checking the ${pretty(m[1])} frame`;
+    if ((m = c.match(/render-html\.mjs\s+(\S+)[^|&]*--stills/))) return `Previewing the ${pretty(m[1])} graphic`;
+    if ((m = c.match(/render-html\.mjs\s+(\S+)/))) return `Animating ${pretty(m[1])}`;
+    if (/export-clips/.test(c)) return 'Placing the graphics on the timeline';
+    if ((m = c.match(/(?:curl|wget)\b.*https?:\/\/([^\/\s'"]+)/))) return `Reading ${m[1].replace(/^www\./, '')}`;
+    if (/ffprobe|ffmpeg .*-vframes|mediainfo/.test(c)) return 'Looking at the footage';
+    if (/convert |magick |clean/.test(c)) return 'Cleaning up the illustrations';
+    if (/scenes\.js|clips\.js|update_clips|make_clips|episode\.json/.test(c)) return 'Writing the graphics';
+    return GENERIC;
+  }
+
   // Turns one run's raw events into messages, folding commands into a "working" row.
   function renderer() {
-    let group = null, count = 0, last = '', fin = null;
+    let group = null, count = 0, fin = null, pending = null;
     const open = () => { group = h(`<details class="steps"><summary><span class="spin"></span><span class="lbl">Working…</span></summary><ol></ol></details>`); count = 0; add(group); };
-    const close = () => { if (group) { group.classList.add('idle'); group.querySelector('.lbl').textContent = `Ran ${count} step${count === 1 ? '' : 's'}`; } group = null; };
+    const close = () => { if (group) { group.classList.add('idle'); group.querySelector('.lbl').textContent = `Did ${count} step${count === 1 ? '' : 's'}`; } group = null; };
+    // one line per activity: repeated checks on the same thing fold together
+    const step = (label, raw) => {
+      if (!group) open();
+      const ol = group.querySelector('ol');
+      if (ol.lastElementChild?.dataset.label !== label) {
+        const li = h(`<li title="${esc(String(raw).slice(0, 300))}">${esc(label)}</li>`); li.dataset.label = label; ol.appendChild(li);
+      }
+      group.querySelector('.lbl').textContent = count ? `${label} · ${count} step${count === 1 ? '' : 's'}` : label;
+    };
     const on = (e) => {
       const t = (e.text || '').trim();
       if (e.kind === 'answer') { close(); return meSays(t.replace(/^You answered:\s*/, '')); }
@@ -797,10 +849,20 @@ async function chat(p, jobs) {
       if (e.kind === 'status') { if (/Worker (started|finished)|Final render|Revising/.test(t)) note(t.replace(/\s*\(pid[^)]*\)/, '')); return; }
       if (fin) { if (/^Tokens:|^\[/.test(t)) { close(); agentSays(fin.join('\n').trim()); fin = null; } else fin.push(t); return; }
       if (/^Finish with message:/.test(t)) { fin = []; return; }
+      // The agent's one-line summary of each action: a line in the working
+      // panel when it's plain English, dropped when it's a raw tool call.
       const say = t.match(/^Summary:\s*(.+)/);
-      if (say && say[1] !== last) { last = say[1]; close(); return agentSays(say[1]); }
+      if (say) { pending = say[1]; return; }
       const cmd = t.match(/^\$\s+(.+)/);
-      if (cmd && !/^\[empty command\]/.test(cmd[1]) && !/^[\d.]+$/.test(cmd[1])) { if (!group) open(); count++; group.querySelector('ol').appendChild(h(`<li>${esc(cmd[1].slice(0, 200))}</li>`)); group.querySelector('.lbl').textContent = `Working · ${count} step${count === 1 ? '' : 's'}`; }
+      if (cmd && !/^\[empty command\]/.test(cmd[1]) && !/^[\d.]+$/.test(cmd[1])) {
+        count++;
+        // One line per action: our label when we know the command, else the
+        // agent's own summary if it reads as plain English, else a generic line.
+        let label = stepLabel(cmd[1]);
+        if (label === GENERIC && pending) label = plainSummary(pending) || GENERIC;
+        pending = null;
+        step(label, cmd[1]);
+      }
     };
     return { on, close };
   }

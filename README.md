@@ -14,7 +14,7 @@ Drop in a recorded talk, say what you want, and get back a finished, on-brand vi
 
 <a href="docs/elyps-demo.mp4"><img src="docs/demo.webp" width="860" alt="Demo: files are dropped into Elyps, a brief is typed, the agent plans, writes and renders graphics, and a finished explainer video plays"></a>
 
-<sub>▶ <a href="docs/elyps-demo.mp4"><b>Watch the 70-second demo with sound</b></a></sub>
+<sub>▶ <a href="docs/elyps-demo.mp4"><b>Watch the 49-second demo with sound</b></a></sub>
 
 </div>
 
