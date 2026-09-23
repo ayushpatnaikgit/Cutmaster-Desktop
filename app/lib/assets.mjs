@@ -62,7 +62,12 @@ export const mediaDir = (id) => path.join(PROJECTS_DIR, id, 'media');
 export function listMedia(id) {
   const dir = mediaDir(id);
   if (!fs.existsSync(dir)) return [];
-  return fs.readdirSync(dir).map((name) => ({ name, kind: kindOf(name), size: fs.statSync(path.join(dir, name)).size }));
+  // A file linked "From disk" can disappear (moved, deleted, a different media
+  // folder). Show it as missing rather than failing the whole list.
+  return fs.readdirSync(dir).map((name) => {
+    try { return { name, kind: kindOf(name), size: fs.statSync(path.join(dir, name)).size }; }
+    catch { return { name, kind: kindOf(name), size: 0, missing: true }; }
+  });
 }
 
 // ---------- asset folders ----------

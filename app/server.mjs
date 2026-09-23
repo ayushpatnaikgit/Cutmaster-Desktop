@@ -1,4 +1,4 @@
-// Cutmaster AI — web front end for the video pipeline.
+// Elyps AI — web front end for the video pipeline.
 // The server takes uploads, keeps projects and assets, queues jobs and streams
 // events. The agent itself runs in worker.mjs, detached, so restarting the
 // server never kills a render in progress.
@@ -18,7 +18,7 @@ import {
 import { usageSummary, getPrices, setPrices, recordUsage } from './lib/usage.mjs';
 import { doctor, resetDoctor, version } from './lib/doctor.mjs';
 import { ROLES, getModels, setModels, availableModels } from './lib/models.mjs';
-import { geminiProxy, newJobToken, proxyBase, stopAgent, AGENT_USER } from './lib/sandbox.mjs';
+import { geminiProxy, newJobToken, proxyBase, stopAgent, explainGeminiError, AGENT_USER } from './lib/sandbox.mjs';
 
 const app = express();
 const PORT = process.env.PORT || 4321;
@@ -39,7 +39,17 @@ const tokenJob = (token) => {
   const j = listJobs().find((x) => x.proxyToken === token && (x.status === 'running' || x.status === 'queued'));
   return j || null;
 };
-app.use('/gemini', express.raw({ type: () => true, limit: '64mb' }), geminiProxy({ tokenJob, realKey: readKey }));
+// Tell the person once per job when Google refuses for a reason they can fix.
+const explained = new Set();
+const onGeminiCall = (job, _path, status, message) => {
+  if (status < 400) return;
+  const plain = explainGeminiError(status, message);
+  if (!plain || explained.has(`${job.id}:${plain}`)) return;
+  explained.add(`${job.id}:${plain}`);
+  emit(job.id, { kind: 'problem', text: plain });
+  updateJob(job.id, { problem: plain });
+};
+app.use('/gemini', express.raw({ type: () => true, limit: '64mb' }), geminiProxy({ tokenJob, realKey: readKey, onCall: onGeminiCall }));
 app.use(express.json({ limit: '4mb' }));
 app.use(express.static(path.join(ROOT, 'public')));
 // Markdown rendering for agent messages and plans (sanitised in the page).
@@ -71,6 +81,16 @@ app.post('/api/key', async (req, res) => {
   try {
     const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=1', { headers: { 'x-goog-api-key': key } });
     if (!r.ok) return res.status(400).json({ error: `Google rejected this key (${r.status})` });
+    // A key can be valid with no credit left; catch that now, not mid-job.
+    const g = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${getModels().agent}:countTokens`, {
+      method: 'POST', headers: { 'x-goog-api-key': key, 'content-type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: 'ok' }] }] }),
+    });
+    if (!g.ok) {
+      const msg = await g.json().then((d) => d.error?.message || '').catch(() => '');
+      const plain = explainGeminiError(g.status, msg);
+      if (plain) return res.status(400).json({ error: plain });
+    }
   } catch { return res.status(502).json({ error: 'Could not reach Google to check the key' }); }
   saveKey(key);
   resetDoctor();
@@ -199,6 +219,8 @@ app.post('/api/projects/:id/produce', async (req, res) => {
   const project = getProject(req.params.id);
   if (!project) return res.status(404).json({ error: 'No such project' });
   const media = listMedia(project.id);
+  const gone = media.filter((m) => m.missing).map((m) => m.name);
+  if (gone.length) return res.status(400).json({ error: `Can't find ${gone.join(', ')} any more. Put it back in your Elyps media folder, or remove it in the Media panel and add it again.` });
   const video = media.find((m) => m.kind === 'video');
   if (!video) return res.status(400).json({ error: 'Upload or link a camera file first' });
   const audio = media.find((m) => m.kind === 'audio');
@@ -253,6 +275,28 @@ app.post('/api/jobs/:id/answer', (req, res) => {
   res.json({ ok: true });
 });
 
+// Talk to the agent while it works, like interrupting a person mid-task: the
+// note goes into the job's inbox and the agent reads it at its next step. If
+// the agent is waiting on a question, the note is the answer.
+app.post('/api/jobs/:id/message', (req, res) => {
+  const job = getJob(req.params.id);
+  if (!job) return res.status(404).json({ error: 'No such job' });
+  const text = String(req.body.text || '').trim().slice(0, 4000);
+  if (!text) return res.status(400).json({ error: 'Say something first' });
+  if (!['running', 'queued'].includes(job.status)) return res.status(409).json({ error: 'The agent has finished — ask for a change instead' });
+  const gate = currentGate(req.params.id);
+  if (gate) {
+    answerGate(req.params.id, gate.n, text);
+    emit(req.params.id, { kind: 'answer', text: `You answered: ${text.slice(0, 500)}` });
+    return res.json({ ok: true, answered: true });
+  }
+  const inbox = path.join(jobDir(req.params.id), 'inbox');
+  fs.mkdirSync(inbox, { recursive: true });
+  fs.writeFileSync(path.join(inbox, `${Date.now()}.json`), JSON.stringify({ text, at: new Date().toISOString() }));
+  emit(req.params.id, { kind: 'note', text: `You said: ${text}` });
+  res.json({ ok: true });
+});
+
 app.post('/api/jobs/:id/cancel', (req, res) => {
   const job = getJob(req.params.id);
   if (job?.pid) stopAgent(job.pid);
@@ -280,7 +324,13 @@ app.get('/api/jobs/:id/timeline', (req, res) => {
   if (!ep) return res.json({ ready: false });
   const clips = read('src/clips.json') || [];
   const intro = ep.introSeconds ?? 6, outro = ep.outroSeconds ?? 8;
-  const s0 = ep.source?.start ?? 0, s1 = ep.source?.end ?? 0;
+  let s0 = ep.source?.start ?? 0, s1 = ep.source?.end ?? 0;
+  if (!(s1 > s0)) {
+    // No trim yet: show the whole camera recording.
+    const job = getJob(req.params.id);
+    const cam = job?.video && path.join(jobDir(req.params.id), 'raw', job.video);
+    try { s1 = s0 + Number(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', cam]).toString().trim()) || 0; } catch { /* unknown yet */ }
+  }
   const footage = Math.max(0, s1 - s0);
   const at = (src) => intro + (src - s0);
   const rendered = (key) => fs.existsSync(path.join(work, 'public', 'clips', `${key}.mp4`));
@@ -387,7 +437,7 @@ function pump() {
   // Detached with no pipes: the run survives a server restart.
   const proc = spawn(process.execPath, [path.join(ROOT, 'worker.mjs'), id], {
     cwd: ROOT,
-    env: { ...process.env, CUTMASTER_JOB_TOKEN: token, GEMINI_BASE_URL: proxyBase() },
+    env: { ...process.env, ELYPS_JOB_TOKEN: token, GEMINI_BASE_URL: proxyBase() },
     detached: true,
     stdio: ['ignore', logFile, logFile],
   });
@@ -419,6 +469,6 @@ for (const job of listJobs()) {
 }
 
 app.listen(PORT, () => {
-  console.log(`Cutmaster AI ${version()} on http://localhost:${PORT}`);
+  console.log(`Elyps AI ${version()} on http://localhost:${PORT}`);
   doctor().then((d) => d.checks.filter((c) => c.status !== 'ok').forEach((c) => console.log(`  [${c.status}] ${c.label}: ${c.detail}`)));
 });

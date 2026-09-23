@@ -1,12 +1,12 @@
-# Cutmaster AI — desktop edition.
+# Elyps AI — desktop edition.
 #   cp .env.example .env      # optional: set MEDIA_DIR and PORT
 #   docker compose up --build
 #   open http://localhost:4322 and paste your Gemini API key
 services:
-  cutmaster:
+  elyps:
     build: .
-    image: cutmaster-desktop:latest
-    container_name: cutmaster
+    image: elyps:latest
+    container_name: elyps
     ports:
       - "${PORT:-4322}:4322"
     environment:
@@ -14,9 +14,9 @@ services:
       ASK_TIMEOUT: "${ASK_TIMEOUT:-7200}"
     volumes:
       # Projects, jobs, brand kit, encrypted key, usage — survives rebuilds.
-      - cutmaster-data:/data
+      - elyps-data:/data
       # The Whisper model downloads once and is reused.
-      - whisper-cache:/home/cutmaster/.cache/huggingface
+      - whisper-cache:/home/elyps/.cache/huggingface
       # Large camera files stay where they are; use "From disk" with /media/<file>.
       - "${MEDIA_DIR:-./media}:/media:ro"
     # Chromium and Remotion need more shared memory than Docker's 64 MB default.
@@ -24,5 +24,5 @@ services:
     restart: unless-stopped
 
 volumes:
-  cutmaster-data:
+  elyps-data:
   whisper-cache:

@@ -116,7 +116,7 @@ try {
     execFileSync('chmod', ['-Rf', 'g+rwX', jobDir(id)]);
   }
   updateJob(id, { work });
-  const result = await driver({ job, work, jobPath: jobDir(id), taskFile: isRevision ? 'REVISION.md' : 'TASK.md', token: process.env.CUTMASTER_JOB_TOKEN, log });
+  const result = await driver({ job, work, jobPath: jobDir(id), taskFile: isRevision ? 'REVISION.md' : 'TASK.md', token: process.env.ELYPS_JOB_TOKEN, log });
   log(`Driver finished: ${JSON.stringify(result)}`, 'status');
   process.exit(result?.ok === false ? 1 : 0);
 } catch (err) {

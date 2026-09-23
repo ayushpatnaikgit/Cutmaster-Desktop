@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Set up Cutmaster AI to run without Docker.
+# Set up Elyps AI to run without Docker.
 # Needs: Node 22, Python 3.12 or 3.13, ffmpeg, ImageMagick, Google Chrome or Chromium.
 set -euo pipefail
 cd "$(dirname "$0")/.."

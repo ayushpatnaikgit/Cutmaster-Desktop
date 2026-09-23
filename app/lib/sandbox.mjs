@@ -20,7 +20,7 @@ export const proxyBase = () => `http://127.0.0.1:${process.env.PORT || 4322}/gem
 /** Environment for anything the agent runs: the job token instead of the key. */
 export function agentEnv(base, token, extra = {}) {
   const env = { ...base };
-  for (const k of Object.keys(env)) if (/^(GEMINI|GOOGLE_API_KEY|CUTMASTER_JOB_TOKEN$)/.test(k)) delete env[k];
+  for (const k of Object.keys(env)) if (/^(GEMINI|GOOGLE_API_KEY|ELYPS_JOB_TOKEN$)/.test(k)) delete env[k];
   return {
     ...env,
     GEMINI_API_KEY: token,        // what the agent's LLM client and the scripts send…
@@ -46,6 +46,16 @@ export function stopAgent(workerPid) {
   if (AGENT_USER) execFile('sudo', ['-n', '-u', AGENT_USER, 'pkill', '-TERM', '-u', AGENT_USER], () => {});
 }
 
+/** Google's error, in words a person can act on — or null if it isn't one we explain. */
+export function explainGeminiError(status, message = '') {
+  const m = String(message);
+  if (/prepayment credits are depleted|billing|credit/i.test(m)) return 'Your Gemini credits have run out. Top up at ai.studio/projects (Billing), then send your request again.';
+  if (status === 401 || status === 403 || /API key not valid|permission/i.test(m)) return 'Google rejected your Gemini key. Check it under Settings.';
+  if (status === 429 && /quota/i.test(m)) return 'Your Gemini key hit its usage quota. It resets over time; you can also raise it in Google AI Studio.';
+  if (status === 404 && /model/i.test(m)) return `This Gemini model isn't available to your key: ${m.slice(0, 160)}. Pick another under Settings → Models.`;
+  return null;
+}
+
 const ALLOWED = /^\/models\/[\w.\-]+:(generateContent|streamGenerateContent|countTokens)$/;
 const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 
@@ -61,7 +71,7 @@ export function geminiProxy({ tokenJob, realKey, onCall }) {
     if (!job) return res.status(401).json({ error: { message: 'Unknown or finished job token.' } });
     if (req.method !== 'POST' || !ALLOWED.test(req.path)) return res.status(403).json({ error: { message: `Not allowed through the proxy: ${req.method} ${req.path}` } });
     const key = realKey();
-    if (!key) return res.status(400).json({ error: { message: 'No Gemini API key saved in Cutmaster.' } });
+    if (!key) return res.status(400).json({ error: { message: 'No Gemini API key saved in Elyps.' } });
     const qs = new URLSearchParams(Object.entries(req.query).filter(([k]) => k !== 'key')).toString();
     try {
       const up = await fetch(`https://generativelanguage.googleapis.com/v1beta${req.path}${qs ? `?${qs}` : ''}`, {
@@ -69,9 +79,17 @@ export function geminiProxy({ tokenJob, realKey, onCall }) {
         headers: { 'content-type': req.get('content-type') || 'application/json', 'x-goog-api-key': key },
         body: req.body && req.body.length ? req.body : undefined,
       });
-      onCall?.(job, req.path, up.status);
       res.status(up.status);
       res.set('content-type', up.headers.get('content-type') || 'application/json');
+      if (!up.ok) {
+        // Errors are small: read them so the app can explain them in plain words.
+        const body = await up.text();
+        let message = body;
+        try { message = JSON.parse(body).error?.message || body; } catch { /* not JSON */ }
+        onCall?.(job, req.path, up.status, message);
+        return res.send(body);
+      }
+      onCall?.(job, req.path, up.status);
       if (!up.body) return res.end();
       const reader = up.body.getReader();
       for (;;) { const { value, done } = await reader.read(); if (done) break; res.write(value); }

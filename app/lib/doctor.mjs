@@ -24,14 +24,19 @@ let cache = null;
  * Returns { ok, checks: [{ id, label, status: 'ok'|'warn'|'fail', detail, fix? }] }.
  * 'fail' blocks new jobs; 'warn' is shown but doesn't.
  */
+// The key can change at any moment (the user just added it), so it's always
+// checked live; the slower tool checks are cached for a minute.
+function keyCheck() {
+  const key = keyStatus();
+  return { id: 'key', label: 'Gemini API key', status: key.present ? 'ok' : 'fail', detail: key.present ? `Saved (ends ${key.tail})` : 'Not added yet',
+    ...(key.present ? {} : { fix: 'Click Settings (bottom left) and paste a key from aistudio.google.com/apikey' }) };
+}
+const withKey = (r) => { const checks = [keyCheck(), ...r.checks.filter((c) => c.id !== 'key')]; return { ...r, checks, ok: !checks.some((c) => c.status === 'fail') }; };
+
 export async function doctor({ fresh = false } = {}) {
-  if (!fresh && cache && Date.now() - cache.at < 60_000) return cache.result;
+  if (!fresh && cache && Date.now() - cache.at < 60_000) return withKey(cache.result);
   const checks = [];
   const add = (id, label, status, detail, fix) => checks.push({ id, label, status, detail, ...(fix ? { fix } : {}) });
-
-  const key = keyStatus();
-  add('key', 'Gemini API key', key.present ? 'ok' : 'fail', key.present ? `Saved (ends ${key.tail})` : 'Not added yet',
-    key.present ? null : 'Click Settings (bottom left) and paste a key from aistudio.google.com/apikey');
 
   const [ffmpeg, chrome, agent, pipe] = await Promise.all([
     run('ffmpeg', ['-version']),
@@ -65,16 +70,16 @@ export async function doctor({ fresh = false } = {}) {
   if (fs.existsSync('/media')) {
     let n = 0;
     try { n = fs.readdirSync('/media').filter((f) => !f.startsWith('.')).length; } catch { /* unreadable */ }
-    add('media', 'Footage folder', 'ok', n ? `${n} file${n === 1 ? '' : 's'} in your media folder` : 'Empty — put large camera files in your Cutmaster media folder and use "From disk"');
+    add('media', 'Footage folder', 'ok', n ? `${n} file${n === 1 ? '' : 's'} in your media folder` : 'Empty — put large camera files in your Elyps media folder and use "From disk"');
   }
 
   const result = { ok: !checks.some((c) => c.status === 'fail'), version: version(), checks };
   cache = { at: Date.now(), result };
-  return result;
+  return withKey(result);
 }
 
 export function version() {
-  if (process.env.CUTMASTER_VERSION) return process.env.CUTMASTER_VERSION;
+  if (process.env.ELYPS_VERSION) return process.env.ELYPS_VERSION;
   try { return JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version || 'dev'; } catch { return 'dev'; }
 }
 

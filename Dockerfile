@@ -1,13 +1,13 @@
-# Cutmaster AI — desktop edition.
+# Elyps AI — desktop edition.
 # One image with everything the agent needs to edit a video end to end:
 # Node (app + Remotion), Python 3.13 (OpenHands, faster-whisper, audio sync),
 # ffmpeg, Chromium (HTML graphics) and Remotion's own headless browser.
 FROM python:3.13-slim-bookworm
 
 ARG VERSION=dev
-LABEL org.opencontainers.image.title="Cutmaster AI" \
+LABEL org.opencontainers.image.title="Elyps AI" \
       org.opencontainers.image.description="An AI video editor: drop a talk, describe the video, get a finished edit with branded graphics." \
-      org.opencontainers.image.source="https://github.com/ayushpatnaikgit/Cutmaster-Desktop" \
+      org.opencontainers.image.source="https://github.com/ayushpatnaikgit/Elyps" \
       org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.version="$VERSION"
 
@@ -32,33 +32,33 @@ RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
 # Python: the agent harness, transcription and the audio-sync maths.
 RUN pip install "openhands-ai==1.11.0" faster-whisper numpy scipy
 
-# Two users. The app runs as `cutmaster` and holds the encrypted Gemini key.
+# Two users. The app runs as `elyps` and holds the encrypted Gemini key.
 # The agent runs code it writes itself, so it runs as `agent`: it can write
 # job workspaces (shared group `studio`) but can't read the key files, and it
 # reaches Gemini only through the app's local proxy with a per-job token.
 RUN groupadd --gid 1500 studio \
- && useradd --create-home --uid 1000 --gid studio cutmaster \
+ && useradd --create-home --uid 1000 --gid studio elyps \
  && useradd --create-home --uid 1001 --gid studio --shell /bin/bash agent \
- && printf 'Defaults:cutmaster !env_reset\ncutmaster ALL=(agent) NOPASSWD:SETENV: ALL\n' > /etc/sudoers.d/cutmaster-agent \
- && chmod 440 /etc/sudoers.d/cutmaster-agent && visudo -cf /etc/sudoers.d/cutmaster-agent
+ && printf 'Defaults:elyps !env_reset\nelyps ALL=(agent) NOPASSWD:SETENV: ALL\n' > /etc/sudoers.d/elyps-agent \
+ && chmod 440 /etc/sudoers.d/elyps-agent && visudo -cf /etc/sudoers.d/elyps-agent
 WORKDIR /app
 
-COPY --chown=cutmaster:studio app/package*.json app/
-COPY --chown=cutmaster:studio pipeline/package*.json pipeline/
-USER cutmaster
+COPY --chown=elyps:studio app/package*.json app/
+COPY --chown=elyps:studio pipeline/package*.json pipeline/
+USER elyps
 # umask 002: the agent (same group) may write caches under pipeline/node_modules.
 RUN umask 002 && cd app && npm ci --omit=dev \
  && cd ../pipeline && npm ci \
  && npx remotion browser ensure
 
-COPY --chown=cutmaster:studio app/ app/
-COPY --chown=cutmaster:studio pipeline/ pipeline/
+COPY --chown=elyps:studio app/ app/
+COPY --chown=elyps:studio pipeline/ pipeline/
 
 # The pipeline's scripts call .venv/bin/python; point it at the image's Python.
 RUN umask 002 && python -m venv --system-site-packages /app/pipeline/.venv
 
 ENV PORT=4322 \
-    CUTMASTER_VERSION=$VERSION \
+    ELYPS_VERSION=$VERSION \
     AGENT_USER=agent \
     DATA_DIR=/data \
     PIPELINE_DIR=/app/pipeline \
@@ -66,14 +66,14 @@ ENV PORT=4322 \
     CHROME_PATH=/usr/bin/chromium \
     CHROME_NO_SANDBOX=1 \
     OPENHANDS_SUPPRESS_BANNER=1 \
-    HF_HOME=/home/cutmaster/.cache/huggingface
+    HF_HOME=/home/elyps/.cache/huggingface
 
 USER root
-RUN mkdir -p /data/jobs /media /home/cutmaster/.cache/huggingface \
- && chown -R cutmaster:studio /data /home/cutmaster/.cache \
- && chmod 2775 /data /data/jobs /home/cutmaster/.cache /home/cutmaster/.cache/huggingface \
- && chmod 711 /home/cutmaster
-USER cutmaster
+RUN mkdir -p /data/jobs /media /home/elyps/.cache/huggingface \
+ && chown -R elyps:studio /data /home/elyps/.cache \
+ && chmod 2775 /data /data/jobs /home/elyps/.cache /home/elyps/.cache/huggingface \
+ && chmod 711 /home/elyps
+USER elyps
 
 EXPOSE 4322
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s CMD curl -fs http://localhost:4322/api/version || exit 1

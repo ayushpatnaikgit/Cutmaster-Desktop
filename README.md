@@ -2,7 +2,7 @@
 
 <img src="docs/logo.svg" width="84" alt="">
 
-# Cutmaster AI
+# Elyps AI
 
 ### An AI video editor that edits like a person
 
@@ -24,17 +24,17 @@ With **[Docker Desktop](https://www.docker.com/products/docker-desktop/)** runni
 
 **Mac · Linux**
 ```sh
-curl -fsSL https://raw.githubusercontent.com/ayushpatnaikgit/Cutmaster-Desktop/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/ayushpatnaikgit/Elyps/main/install.sh | sh
 ```
 
 **Windows** (PowerShell)
 ```powershell
-irm https://raw.githubusercontent.com/ayushpatnaikgit/Cutmaster-Desktop/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/ayushpatnaikgit/Elyps/main/install.ps1 | iex
 ```
 
-It opens in your browser. Click **Settings** (bottom left) and add a Gemini key from [aistudio.google.com/apikey](https://aistudio.google.com/apikey). Put big camera files in the `Cutmaster/media` folder in your home folder and use **From disk** → `/media/<file name>`. A full edit costs about **$1–4** in Gemini usage.
+It opens in your browser. Click **Settings** (bottom left) and add a Gemini key from [aistudio.google.com/apikey](https://aistudio.google.com/apikey). Put big camera files in the `Elyps/media` folder in your home folder and use **From disk** → `/media/<file name>`. A full edit costs about **$1–4** in Gemini usage.
 
-`cutmaster update` gets new versions. `cutmaster status` tells you if anything's off. [More below ↓](#install)
+`elyps update` gets new versions. `elyps status` tells you if anything's off. [More below ↓](#install)
 
 <br>
 
@@ -144,25 +144,25 @@ You need **[Docker Desktop](https://www.docker.com/products/docker-desktop/)** (
 **macOS · Linux**
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/ayushpatnaikgit/Cutmaster-Desktop/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/ayushpatnaikgit/Elyps/main/install.sh | sh
 ```
 
 **Windows** (PowerShell)
 
 ```powershell
-irm https://raw.githubusercontent.com/ayushpatnaikgit/Cutmaster-Desktop/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/ayushpatnaikgit/Elyps/main/install.ps1 | iex
 ```
 
 The installer:
 
-1. creates a **Cutmaster** folder in your home folder, with a `media` folder for your footage;
+1. creates a **Elyps** folder in your home folder, with a `media` folder for your footage;
 2. downloads the app (a few GB, once; Intel and Apple Silicon both supported);
 3. opens **http://localhost:4322** in your browser.
 
 Then:
 
 1. Click **Settings** (bottom left) and paste a [Gemini API key](https://aistudio.google.com/apikey). That one key runs the agent, the illustrations and the music.
-2. Put your camera file and mic recording in `Cutmaster/media`.
+2. Put your camera file and mic recording in `Elyps/media`.
 3. On the home page choose **From disk**, enter `/media/<file name>` for each file, write your brief, and press **Start editing**.
 
 > [!TIP]
@@ -172,13 +172,13 @@ Then:
 
 | Command | What it does |
 |---|---|
-| `cutmaster start` | Start it and open the browser |
-| `cutmaster stop` | Stop it (it also stops when Docker quits) |
-| `cutmaster update` | Get the latest version; your videos are kept |
-| `cutmaster status` | Is it running, and is everything it needs working? |
-| `cutmaster logs` | What it's doing right now |
-| `cutmaster media` | Open your footage folder |
-| `cutmaster uninstall` | Remove it, keeping your videos unless you say otherwise |
+| `elyps start` | Start it and open the browser |
+| `elyps stop` | Stop it (it also stops when Docker quits) |
+| `elyps update` | Get the latest version; your videos are kept |
+| `elyps status` | Is it running, and is everything it needs working? |
+| `elyps logs` | What it's doing right now |
+| `elyps media` | Open your footage folder |
+| `elyps uninstall` | Remove it, keeping your videos unless you say otherwise |
 
 <br>
 
@@ -232,7 +232,7 @@ The **Usage** page shows what each video cost, and you can set a monthly budget.
 ## Privacy and safety
 
 - **Your footage stays on your computer.** It's read in place from your media folder and never uploaded. Only text, frames the agent checks, and generation prompts go to Google's API.
-- **The agent never sees your key.** It runs as its own user inside the container, which can't read the encrypted key store. It reaches Gemini only through Cutmaster's local proxy, using a token that works only from inside the container, only for Gemini calls, and only while its job runs. A web page it reads while researching can't talk it into leaking the key, because it doesn't have the key.
+- **The agent never sees your key.** It runs as its own user inside the container, which can't read the encrypted key store. It reaches Gemini only through Elyps's local proxy, using a token that works only from inside the container, only for Gemini calls, and only while its job runs. A web page it reads while researching can't talk it into leaking the key, because it doesn't have the key.
 - **The agent is sandboxed.** It runs code it writes itself, so it runs unprivileged inside the container. It can't see your files outside the media folder, which it can only read. **Stop** ends everything it started. The app only listens on `127.0.0.1`, so nobody else on your network can reach it.
 
 <br>
@@ -242,7 +242,7 @@ The **Usage** page shows what each video cost, and you can set a monthly budget.
 Projects, every job's working files, your brand kit, usage records and your key all live in a Docker volume. Updating or reinstalling never touches it.
 
 ```sh
-cutmaster uninstall     # choose "y" to keep your videos, "delete" to remove everything
+elyps uninstall     # choose "y" to keep your videos, "delete" to remove everything
 ```
 
 <br>
@@ -253,7 +253,7 @@ cutmaster uninstall     # choose "y" to keep your videos, "delete" to remove eve
 <summary><b>Run from source</b></summary>
 
 ```sh
-git clone https://github.com/ayushpatnaikgit/Cutmaster-Desktop && cd Cutmaster-Desktop
+git clone https://github.com/ayushpatnaikgit/Elyps && cd Elyps
 cp .env.example .env          # optional: MEDIA_DIR, PORT
 docker compose up --build     # http://localhost:4322
 ```
@@ -304,14 +304,14 @@ install.sh, install.ps1  the installers
 | `OPENHANDS_PYTHON` | `python` | Python with `openhands-ai` installed |
 | `CHROME_PATH` | `/usr/bin/chromium` | Browser used to render graphics |
 
-Installer options: `CUTMASTER_HOME`, `CUTMASTER_PORT`, `CUTMASTER_IMAGE` and `CUTMASTER_NO_OPEN=1`.
+Installer options: `ELYPS_HOME`, `ELYPS_PORT`, `ELYPS_IMAGE` and `ELYPS_NO_OPEN=1`.
 
 </details>
 
 <details>
 <summary><b>Releasing</b></summary>
 
-[`.github/workflows/release.yml`](.github/workflows/release.yml) builds the image on native Intel and Apple Silicon runners. It smoke-tests each build (every tool the agent needs must pass the system check), then publishes one multi-architecture image to `ghcr.io/ayushpatnaikgit/cutmaster-desktop`.
+[`.github/workflows/release.yml`](.github/workflows/release.yml) builds the image on native Intel and Apple Silicon runners. It smoke-tests each build (every tool the agent needs must pass the system check), then publishes one multi-architecture image to `ghcr.io/ayushpatnaikgit/elyps`.
 
 - Push to `main` → `:edge`
 - Tag `vX.Y.Z` → `:X.Y.Z`, `:X.Y` and `:latest` (what the installers use)
@@ -324,7 +324,7 @@ Installer options: `CUTMASTER_HOME`, `CUTMASTER_PORT`, `CUTMASTER_IMAGE` and `CU
 
 MIT; see [LICENSE](LICENSE).
 
-Cutmaster renders video with [Remotion](https://www.remotion.dev), which is free for individuals and companies of up to three people. Larger organisations need a [Remotion company licence](https://www.remotion.pro).
+Elyps renders video with [Remotion](https://www.remotion.dev), which is free for individuals and companies of up to three people. Larger organisations need a [Remotion company licence](https://www.remotion.pro).
 
 <br>
 

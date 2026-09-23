@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Cutmaster AI</title>
+<title>Elyps AI</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;500&display=swap">
@@ -295,7 +295,7 @@
 <body>
 <div class="shell">
   <nav class="rail" aria-label="Main">
-    <div class="logo" aria-label="Cutmaster AI"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="13" height="14" rx="2"/><path d="M16 10l5-3v10l-5-3"/></svg></div>
+    <div class="logo" aria-label="Elyps AI"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="13" height="14" rx="2"/><path d="M16 10l5-3v10l-5-3"/></svg></div>
     <button data-go="home" class="on"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></span>Home</button>
     <button data-go="projects"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span>Videos</button>
     <button data-go="brand"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 22a10 10 0 1 1 10-10c0 2.5-2 3-3.5 3H16a2 2 0 0 0-1.5 3.3A2 2 0 0 1 12 22z"/></svg></span>Brand</button>
@@ -367,11 +367,36 @@ function go(view, projectId = null) {
   clearInterval(S.tl);
   S.view = view; S.projectId = projectId;
   document.querySelectorAll('.rail [data-go]').forEach((b) => b.classList.toggle('on', b.dataset.go === (view === 'project' ? 'projects' : view)));
-  ({ home, projects, brand, project, usage })[view]();
+  return ({ home, projects, brand, project, usage })[view]();
 }
 document.querySelectorAll('.rail [data-go]').forEach((b) => b.onclick = () => go(b.dataset.go));
 
 /* ============================== key */
+// First run: no key yet → ask for it up front, with a link to get one.
+function welcomeKey(reason) {
+  if ($('#wk')) return;
+  const m = sheet(`<div id="wk" style="display:grid;gap:14px">
+    <h3>${reason ? 'Add your Gemini key to start' : 'Welcome to Elyps AI'}</h3>
+    <p class="hint" style="font-size:14.5px">${reason ? esc(reason) + ' ' : ''}Elyps runs on your own <b>Gemini API key</b>. One key covers the editor, the illustrations and the music, and you pay Google directly for what you use: about $1–4 per video.</p>
+    <ol class="hint" style="margin:0;padding-left:20px;font-size:14px;line-height:1.7">
+      <li>Open <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener"><b>aistudio.google.com/apikey</b></a> and sign in with Google</li>
+      <li>Click <b>Create API key</b> and copy it</li>
+      <li>Paste it here</li>
+    </ol>
+    <label class="field">Gemini API key<input type="password" id="wkv" placeholder="AIza…" autocomplete="off"></label>
+    <div class="err" id="wke"></div>
+    <p class="hint">It's stored encrypted on this computer. The editor never sees it: it works through Elyps, which adds the key for it.</p>
+    <div style="display:flex;gap:8px"><button class="btn" id="wks">Save and start</button><span style="flex:1"></span><button class="btn quiet" data-close>Later</button></div></div>`);
+  const input = $('#wkv', m), btn = $('#wks', m);
+  input.focus();
+  input.onkeydown = (e) => { if (e.key === 'Enter') btn.click(); };
+  btn.onclick = async () => {
+    btn.disabled = true; btn.textContent = 'Checking…'; $('#wke', m).textContent = '';
+    try { await api('/api/key', { method: 'POST', body: JSON.stringify({ key: input.value }) }); m.remove(); await refreshKey(); showDoctor(); }
+    catch (e) { $('#wke', m).textContent = e.message; btn.disabled = false; btn.textContent = 'Save and start'; }
+  };
+}
+
 async function refreshKey() {
   const k = await api('/api/key');
   $('#keydot').classList.toggle('ok', !!k.present);
@@ -503,6 +528,13 @@ async function showDoctor() {
   box.innerHTML = `<b>${bad ? "This computer isn't ready to make videos yet" : 'Heads up'}</b><ul>${checkRows(issues)}</ul>`;
 }
 
+/* A problem that stopped a job from starting, shown in the project instead of a blocking dialog. */
+function showProblem(text) {
+  const t = $('#thread');
+  if (!t) return alert(text);
+  t.prepend(h(`<div class="doctor bad" style="width:auto"><b>The editor couldn't start</b><span>${esc(text)}</span><span class="fix">Fix that, then describe the video below to start again.</span></div>`));
+}
+
 /* ============================== home */
 const QUICK = [
   ['Explainer from an interview', '#0ea5b7', 'I have an interview. Edit it, add relevant graphics at the key ideas, and make an intro and outro.'],
@@ -514,7 +546,7 @@ async function home() {
   $('#page').innerHTML = `
     <div class="hm">
       <div class="hm-center"><div id="doctor" hidden></div><div class="hm-col">
-        <h1 class="wordmark"><span class="mk"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="13" height="14" rx="2"/><path d="M16 10l5-3v10l-5-3"/></svg></span>Cutmaster <span class="ai">AI</span></h1>
+        <h1 class="wordmark"><span class="mk"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="13" height="14" rx="2"/><path d="M16 10l5-3v10l-5-3"/></svg></span>Elyps <span class="ai">AI</span></h1>
         <div class="mon-bar"><span class="rec"></span><b>NEW VIDEO</b><span style="flex:1"></span><span>00:00:00:00</span></div>
         <div class="stagebox" id="stage">
           <div class="fcard" style="left:70px;top:70px;width:150px;transform:rotate(-6deg)"><div class="vid"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div><span class="lbl">interview.mov</span></div>
@@ -573,6 +605,7 @@ async function home() {
   brief.oninput = () => { autosize(brief); redraw(); };
   brief.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!start.disabled) start.click(); } };
   start.onclick = async () => {
+    if (!(await api('/api/key')).present) return welcomeKey('You need a key before the editor can start.');
     start.disabled = true; start.textContent = 'Starting…';
     try {
       const text = brief.value.trim();
@@ -580,8 +613,14 @@ async function home() {
       const p = await api('/api/projects', { method: 'POST', body: JSON.stringify({ name, notes: text }) });
       await uploadPicked(p.id, picked);
       const media = (await api(`/api/projects/${p.id}`)).media;
-      if (media.some((m) => m.kind === 'video')) await api(`/api/projects/${p.id}/produce`, { method: 'POST', body: JSON.stringify({ prompt: text }) });
-      go('project', p.id);
+      // The project exists now: open it even if the job can't start, and say why there.
+      let problem = null;
+      if (media.some((m) => m.kind === 'video')) {
+        try { await api(`/api/projects/${p.id}/produce`, { method: 'POST', body: JSON.stringify({ prompt: text }) }); }
+        catch (err) { problem = err.message; }
+      }
+      await go('project', p.id);
+      if (problem) showProblem(problem);
     } catch (e) { alert(e.message); start.disabled = false; start.textContent = 'Start editing'; }
   };
 
@@ -717,7 +756,7 @@ function mediaPanel(host, p) {
   host.innerHTML = `<div class="panel"><h4>Footage and audio</h4><div class="thumbs" id="mt"></div>
     <label class="drop" id="md">${I.upload}<b>Upload video or audio</b><span>or drag files here</span><input type="file" multiple hidden></label>
     <button class="btn quiet small" id="ml">${I.link} Use a file from disk</button></div>`;
-  p.media.forEach((m) => $('#mt', host).appendChild(h(`<div class="thumb ${m.kind === 'video' ? 'video' : m.kind === 'audio' ? 'audio' : 'file'}" style="cursor:default">${m.kind === 'video' ? I.film : I.mic}<span class="name">${esc(m.name)}</span><span class="hint">${(m.size / 1e6).toFixed(0)} MB</span></div>`)));
+  p.media.forEach((m) => $('#mt', host).appendChild(h(`<div class="thumb ${m.kind === 'video' ? 'video' : m.kind === 'audio' ? 'audio' : 'file'}" style="cursor:default">${m.kind === 'video' ? I.film : I.mic}<span class="name">${esc(m.name)}</span><span class="hint">${m.missing ? '<b style="color:var(--bad)">File missing</b>' : `${(m.size / 1e6).toFixed(0)} MB`}</span></div>`)));
   const refresh = async () => { Object.assign(p, await api(`/api/projects/${p.id}`)); mediaPanel(host, p); };
   const md = $('#md', host);
   const send = async (files) => { const fd = new FormData(); [...files].forEach((f) => fd.append('files', f)); md.querySelector('b').textContent = 'Uploading…'; await fetch(`/api/projects/${p.id}/media`, { method: 'POST', body: fd }); refresh(); };
@@ -753,6 +792,8 @@ async function chat(p, jobs) {
     const on = (e) => {
       const t = (e.text || '').trim();
       if (e.kind === 'answer') { close(); return meSays(t.replace(/^You answered:\s*/, '')); }
+      if (e.kind === 'note') { close(); return meSays(t.replace(/^You said:\s*/, '')); }
+      if (e.kind === 'problem') { close(); return add(h(`<div class="doctor bad" style="width:auto;margin:0"><b>The editor stopped</b><span>${esc(t)}</span></div>`)); }
       if (e.kind === 'status') { if (/Worker (started|finished)|Final render|Revising/.test(t)) note(t.replace(/\s*\(pid[^)]*\)/, '')); return; }
       if (fin) { if (/^Tokens:|^\[/.test(t)) { close(); agentSays(fin.join('\n').trim()); fin = null; } else fin.push(t); return; }
       if (/^Finish with message:/.test(t)) { fin = []; return; }
@@ -777,6 +818,8 @@ async function chat(p, jobs) {
     placeholder: 'Tell the agent what to make…', attach: !job,
     onSend: async (text, picked) => {
       if (gate) return api(`/api/jobs/${job.id}/answer`, { method: 'POST', body: JSON.stringify({ answer: text }) });
+      // While it works: a note the agent picks up at its next step.
+      if (status === 'running' || status === 'queued') return api(`/api/jobs/${job.id}/message`, { method: 'POST', body: JSON.stringify({ text }) });
       if (job && job.status !== 'failed') return revise(null, text);
       await uploadPicked(p.id, picked);
       await api(`/api/projects/${p.id}/produce`, { method: 'POST', body: JSON.stringify({ prompt: text }) });
@@ -786,7 +829,7 @@ async function chat(p, jobs) {
   dock.appendChild(box);
   const setComposer = () => {
     if (gate) box.setDisabled(false, 'Reply to the agent…');
-    else if (status === 'running' || status === 'queued') box.setDisabled(true, 'The agent is working. It will ask when it needs you.');
+    else if (status === 'running' || status === 'queued') box.setDisabled(false, 'Tell the agent something while it works — it picks it up at its next step');
     else box.setDisabled(false, job ? 'Ask for a change — or click any clip, image or moment to change just that' : 'Tell the agent what to make…');
   };
   if (!job) {
@@ -909,8 +952,8 @@ async function usage() {
   };
 }
 
-refreshKey();
 go('home');
+refreshKey().then((k) => { if (!k.present) welcomeKey(); });
 </script>
 </body>
 </html>

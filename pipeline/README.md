@@ -49,6 +49,8 @@ with `.venv/bin/python`.
 
 - `episode.json` — the only per-episode configuration: titles, speaker, org,
   takeaway line, chosen intro/outro, music, and where to trim the source.
+  `source.start`/`source.end` start at 0 and must be set from the transcript
+  (seconds in the camera file); the render refuses to run until they are.
 - `html/scenes.js` — the brand library: intro and outro scenes, XKDR pixel logo,
   coral braces, pixel type, helpers. Shared across episodes; edit only to change
   the series look.

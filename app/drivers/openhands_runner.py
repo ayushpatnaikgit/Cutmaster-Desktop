@@ -37,7 +37,7 @@ for name, cls in (("TerminalTool", TerminalTool), ("FileEditorTool", FileEditorT
         pass
 
 # The key never reaches this process: api_key is a job token, and base_url is
-# the Cutmaster app's local proxy, which swaps in the real key.
+# the Elyps app's local proxy, which swaps in the real key.
 llm = LLM(
     model=f"gemini/{model}",
     api_key=api_key,
@@ -84,13 +84,43 @@ task = (work / task_file).read_text()
 conversation.send_message(
     SYSTEM + "\n\nYour workspace is the current directory. The request:\n\n" + task
 )
+# Messages the person sends while the agent works (the app writes them to the
+# job's inbox). send_message is safe to call while run() is going: the agent
+# sees the note at its next step, like being interrupted mid-task.
+import threading, time
+
+NOTE = (
+    "The person just sent you a message while you were working:\n\n"
+    "\"{text}\"\n\n"
+    "Take it into account from now on. If it changes what you're doing, adjust now and "
+    "say in one line what you're changing (no need for ask-user). Then carry on."
+)
+inbox = Path(os.environ.get("STUDIO_JOB_DIR", str(work.parent))) / "inbox"
+
+def watch_inbox():
+    seen = set()
+    while True:
+        try:
+            for f in sorted(inbox.glob("*.json")):
+                if f.name in seen:
+                    continue
+                seen.add(f.name)
+                text = json.loads(f.read_text()).get("text", "").strip()
+                if text:
+                    conversation.send_message(NOTE.format(text=text))
+                    emit("status", "The agent has your message")
+        except Exception as e:  # never let the watcher take the run down
+            emit("status", f"Couldn't read a message: {e}")
+        time.sleep(2)
+
+threading.Thread(target=watch_inbox, daemon=True).start()
+
 conversation.run()
 
 emit("status", "OpenHands conversation finished")
 
 # The agent may declare itself finished while a detached render it started is
 # still running. Don't judge the run until every run-long.sh job has exited.
-import time
 
 def running_long_jobs():
     alive = []

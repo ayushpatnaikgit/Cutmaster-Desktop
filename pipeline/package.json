@@ -1,5 +1,5 @@
 {
-  "name": "cutmaster-pipeline",
+  "name": "elyps-pipeline",
   "private": true,
   "type": "module",
   "scripts": {

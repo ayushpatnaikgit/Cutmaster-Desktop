@@ -1,37 +1,37 @@
 #!/bin/sh
-# Cutmaster AI installer for macOS and Linux.
+# Elyps AI installer for macOS and Linux.
 #
-#   curl -fsSL https://raw.githubusercontent.com/ayushpatnaikgit/Cutmaster-Desktop/main/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/ayushpatnaikgit/Elyps/main/install.sh | sh
 #
-# Sets up ~/Cutmaster (your footage folder and settings), downloads the app
+# Sets up ~/Elyps (your footage folder and settings), downloads the app
 # as a Docker image, starts it and opens it in your browser. Your videos,
 # assets and key live in a Docker volume, so updating never loses them.
 #
 # Options (environment variables):
-#   CUTMASTER_HOME   where to put Cutmaster        (default: ~/Cutmaster)
-#   CUTMASTER_PORT   port for the app              (default: 4322, or the next free one)
-#   CUTMASTER_IMAGE  image to run                  (default: the latest release)
-#   CUTMASTER_NO_OPEN=1  don't open the browser at the end
+#   ELYPS_HOME   where to put Elyps        (default: ~/Elyps)
+#   ELYPS_PORT   port for the app              (default: 4322, or the next free one)
+#   ELYPS_IMAGE  image to run                  (default: the latest release)
+#   ELYPS_NO_OPEN=1  don't open the browser at the end
 set -eu
 
-IMAGE="${CUTMASTER_IMAGE:-ghcr.io/ayushpatnaikgit/cutmaster-desktop:latest}"
-HOME_DIR="${CUTMASTER_HOME:-$HOME/Cutmaster}"
-PORT="${CUTMASTER_PORT:-}"
+IMAGE="${ELYPS_IMAGE:-ghcr.io/ayushpatnaikgit/elyps:latest}"
+HOME_DIR="${ELYPS_HOME:-$HOME/Elyps}"
+PORT="${ELYPS_PORT:-}"
 
 say()  { printf '\033[1m%s\033[0m\n' "$*"; }
 info() { printf '  %s\n' "$*"; }
 die()  { printf '\n\033[31m%s\033[0m\n' "$*" >&2; exit 1; }
 
-say "Installing Cutmaster AI"
+say "Installing Elyps AI"
 
 # ---------------------------------------------------------------- Docker
 os="$(uname -s)"
 if ! command -v docker >/dev/null 2>&1; then
   case "$os" in
-    Darwin) die "Cutmaster runs inside Docker, which isn't installed.
+    Darwin) die "Elyps runs inside Docker, which isn't installed.
 Install Docker Desktop for Mac: https://docs.docker.com/desktop/setup/install/mac-install/
 Open it once, wait for it to say it's running, then run this installer again." ;;
-    *) die "Cutmaster runs inside Docker, which isn't installed.
+    *) die "Elyps runs inside Docker, which isn't installed.
 Install Docker Engine: https://docs.docker.com/engine/install/  (or Docker Desktop for Linux)
 Then run this installer again." ;;
   esac
@@ -57,8 +57,8 @@ in_use() {
 if [ -f "$HOME_DIR/.env" ] && [ -z "$PORT" ]; then PORT="$(sed -n 's/^PORT=//p' "$HOME_DIR/.env")"; fi
 if [ -z "$PORT" ]; then
   PORT=4322
-  # a running Cutmaster already owns its port — reuse it; otherwise find a free one
-  if ! docker ps --format '{{.Names}}' | grep -qx cutmaster-app; then
+  # a running Elyps already owns its port — reuse it; otherwise find a free one
+  if ! docker ps --format '{{.Names}}' | grep -qx elyps-app; then
     while in_use "$PORT"; do PORT=$((PORT + 1)); done
   fi
 fi
@@ -66,7 +66,7 @@ fi
 # ---------------------------------------------------------------- files
 mkdir -p "$HOME_DIR/media"
 cat > "$HOME_DIR/.env" <<EOF
-# Cutmaster settings. Run 'cutmaster restart' after changing them.
+# Elyps settings. Run 'elyps restart' after changing them.
 PORT=$PORT
 IMAGE=$IMAGE
 # Seconds the agent waits for your answer before carrying on alone.
@@ -74,19 +74,19 @@ ASK_TIMEOUT=7200
 EOF
 
 cat > "$HOME_DIR/docker-compose.yml" <<'EOF'
-# Cutmaster AI. Managed by the 'cutmaster' command; settings are in .env.
-name: cutmaster
+# Elyps AI. Managed by the 'elyps' command; settings are in .env.
+name: elyps
 services:
   app:
     image: ${IMAGE}
-    container_name: cutmaster-app
+    container_name: elyps-app
     ports:
       - "127.0.0.1:${PORT}:4322"   # only this computer can reach it
     environment:
       ASK_TIMEOUT: "${ASK_TIMEOUT:-7200}"
     volumes:
       - data:/data                                  # videos, assets, brand kit, key, usage
-      - models:/home/cutmaster/.cache/huggingface   # speech model, downloaded once
+      - models:/home/elyps/.cache/huggingface   # speech model, downloaded once
       - ./media:/media:ro                           # your footage: use "From disk" with /media/<file>
     shm_size: "2gb"
     restart: unless-stopped
@@ -95,12 +95,12 @@ volumes:
   models:
 EOF
 
-cat > "$HOME_DIR/cutmaster" <<'EOF'
+cat > "$HOME_DIR/elyps" <<'EOF'
 #!/bin/sh
-# Cutmaster AI — start, stop, update and check the app.
+# Elyps AI — start, stop, update and check the app.
 set -eu
 DIR="$(cd "$(dirname "$0")" && pwd -P)"
-# follow a symlink (e.g. ~/.local/bin/cutmaster) back to the install folder
+# follow a symlink (e.g. ~/.local/bin/elyps) back to the install folder
 [ -L "$0" ] && DIR="$(cd "$(dirname "$(readlink "$0")")" && pwd -P)"
 cd "$DIR"
 PORT="$(sed -n 's/^PORT=//p' .env)"
@@ -110,7 +110,7 @@ open_url() { command -v open >/dev/null 2>&1 && open "$1" || { command -v xdg-op
 wait_up() {
   printf 'Starting'; i=0
   until curl -fs "$URL/api/version" >/dev/null 2>&1; do
-    i=$((i + 1)); [ $i -gt 90 ] && { echo; echo "It's taking a while — see 'cutmaster logs'."; return 1; }
+    i=$((i + 1)); [ $i -gt 90 ] && { echo; echo "It's taking a while — see 'elyps logs'."; return 1; }
     printf '.'; sleep 2
   done; echo " ready at $URL"
 }
@@ -125,10 +125,10 @@ case "${1:-help}" in
   status)
     dc ps
     # the container has Node, so format the system check there
-    docker exec cutmaster-app node -e 'fetch("http://localhost:4322/api/doctor?fresh=1").then(r=>r.json()).then(d=>{console.log(`\nCutmaster ${d.version}`);for(const c of d.checks)console.log(`  ${c.status==="ok"?"✓":c.status==="warn"?"!":"✗"} ${c.label}: ${c.detail}${c.fix?`\n      → ${c.fix}`:""}`)})' 2>/dev/null \
-      || echo "Not running — 'cutmaster start'" ;;
+    docker exec elyps-app node -e 'fetch("http://localhost:4322/api/doctor?fresh=1").then(r=>r.json()).then(d=>{console.log(`\nElyps ${d.version}`);for(const c of d.checks)console.log(`  ${c.status==="ok"?"✓":c.status==="warn"?"!":"✗"} ${c.label}: ${c.detail}${c.fix?`\n      → ${c.fix}`:""}`)})' 2>/dev/null \
+      || echo "Not running — 'elyps start'" ;;
   uninstall)
-    printf 'Remove Cutmaster? Your videos and settings are kept unless you also type "delete" (y/N/delete): '
+    printf 'Remove Elyps? Your videos and settings are kept unless you also type "delete" (y/N/delete): '
     read -r a
     case "$a" in
       delete) dc down -v --rmi all; echo "Removed, including all videos. You can delete $DIR." ;;
@@ -136,50 +136,63 @@ case "${1:-help}" in
       *)      echo "Nothing changed." ;;
     esac ;;
   *) cat <<USAGE
-Cutmaster AI — $URL
-  cutmaster start      start it and open the browser
-  cutmaster stop       stop it
-  cutmaster update     download the latest version
-  cutmaster status     is it running, and is everything it needs working?
-  cutmaster logs       what it's doing (Ctrl-C to leave)
-  cutmaster open       open it in the browser
-  cutmaster media      open your footage folder
-  cutmaster uninstall  remove it
+Elyps AI — $URL
+  elyps start      start it and open the browser
+  elyps stop       stop it
+  elyps update     download the latest version
+  elyps status     is it running, and is everything it needs working?
+  elyps logs       what it's doing (Ctrl-C to leave)
+  elyps open       open it in the browser
+  elyps media      open your footage folder
+  elyps uninstall  remove it
 USAGE
   ;;
 esac
 EOF
-chmod +x "$HOME_DIR/cutmaster"
+chmod +x "$HOME_DIR/elyps"
 
-# Put 'cutmaster' on the PATH when there's a user bin directory for it.
+# Put 'elyps' on the PATH when there's a user bin directory for it.
 linked=""
 for bin in "$HOME/.local/bin" "$HOME/bin"; do
-  case ":$PATH:" in *":$bin:"*) mkdir -p "$bin"; ln -sf "$HOME_DIR/cutmaster" "$bin/cutmaster"; linked="$bin"; break ;; esac
+  case ":$PATH:" in *":$bin:"*) mkdir -p "$bin"; ln -sf "$HOME_DIR/elyps" "$bin/elyps"; linked="$bin"; break ;; esac
 done
 if [ -z "$linked" ] && [ -d /usr/local/bin ] && [ -w /usr/local/bin ]; then
-  ln -sf "$HOME_DIR/cutmaster" /usr/local/bin/cutmaster; linked=/usr/local/bin
+  ln -sf "$HOME_DIR/elyps" /usr/local/bin/elyps; linked=/usr/local/bin
 fi
 
 # ---------------------------------------------------------------- image
-say "Downloading Cutmaster (a couple of GB the first time)…"
+say "Downloading Elyps (a couple of GB the first time)…"
 if ! docker pull "$IMAGE"; then
   docker image inspect "$IMAGE" >/dev/null 2>&1 || die "Couldn't download $IMAGE. Check your internet connection and try again."
   info "Couldn't reach the registry — using the copy already on this computer."
+fi
+
+# ---------------------------------------------------------------- moving from Cutmaster
+# Elyps used to be called Cutmaster. Bring an old install's videos and key along.
+if docker volume inspect cutmaster_data >/dev/null 2>&1 && ! docker volume inspect elyps_data >/dev/null 2>&1; then
+  say "Moving your videos from Cutmaster…"
+  docker rm -f cutmaster-app >/dev/null 2>&1 || true
+  docker volume create elyps_data >/dev/null
+  docker run --rm --user 0 --entrypoint sh -v cutmaster_data:/from:ro -v elyps_data:/to "$IMAGE" -c 'cp -a /from/. /to/'
+  for old in "$HOME/.local/bin/cutmaster" "$HOME/bin/cutmaster" /usr/local/bin/cutmaster; do
+    [ -L "$old" ] && rm -f "$old" 2>/dev/null || true
+  done
+  info "Done. The old copy is kept (Docker volume cutmaster_data); remove it any time with: docker volume rm cutmaster_data"
 fi
 
 say "Starting…"
 docker compose --project-directory "$HOME_DIR" up -d
 i=0
 until curl -fs "http://localhost:$PORT/api/version" >/dev/null 2>&1; do
-  i=$((i + 1)); [ $i -gt 90 ] && die "Cutmaster didn't start. See: docker logs cutmaster-app"
+  i=$((i + 1)); [ $i -gt 90 ] && die "Elyps didn't start. See: docker logs elyps-app"
   sleep 2
 done
 
-cmd="$HOME_DIR/cutmaster"; [ -n "$linked" ] && cmd="cutmaster"
-say "Cutmaster AI is running at http://localhost:$PORT"
+cmd="$HOME_DIR/elyps"; [ -n "$linked" ] && cmd="elyps"
+say "Elyps AI is running at http://localhost:$PORT"
 info "Put camera files in $HOME_DIR/media and use \"From disk\" with /media/<file name>."
 info "Add your Gemini API key under \"Settings\" (bottom left) — get one at aistudio.google.com/apikey."
 info "Manage it with: $cmd start | stop | update | status"
-if [ "${CUTMASTER_NO_OPEN:-}" != 1 ]; then
+if [ "${ELYPS_NO_OPEN:-}" != 1 ]; then
   (command -v open >/dev/null 2>&1 && open "http://localhost:$PORT") || (command -v xdg-open >/dev/null 2>&1 && xdg-open "http://localhost:$PORT" >/dev/null 2>&1) || true
 fi

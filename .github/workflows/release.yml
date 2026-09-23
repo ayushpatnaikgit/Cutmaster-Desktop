@@ -1,4 +1,4 @@
-# Builds the Cutmaster image for Intel/AMD (amd64) and Apple Silicon/ARM
+# Builds the Elyps image for Intel/AMD (amd64) and Apple Silicon/ARM
 # (arm64) on native runners, smoke-tests each, and publishes one multi-arch
 # image to GitHub Container Registry.
 #
@@ -17,7 +17,7 @@ permissions:
   packages: write
 
 env:
-  IMAGE: ghcr.io/${{ github.repository_owner }}/cutmaster-desktop
+  IMAGE: ghcr.io/${{ github.repository_owner }}/elyps
 
 jobs:
   build:
@@ -60,14 +60,14 @@ jobs:
           platforms: ${{ matrix.platform }}
           build-args: VERSION=${{ steps.v.outputs.version }}
           load: true
-          tags: cutmaster-test
+          tags: elyps-test
           cache-from: type=gha,scope=${{ matrix.platform }}
           cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
 
       - name: Smoke test — every tool the agent needs is present
         run: |
           echo "::notice::images: $(docker images --format '{{.Repository}}:{{.Tag}} {{.Size}}' | tr '\n' ' ')"
-          if ! out=$(docker run -d --name smoke --shm-size 2g -p 4322:4322 cutmaster-test 2>&1); then
+          if ! out=$(docker run -d --name smoke --shm-size 2g -p 4322:4322 elyps-test 2>&1); then
             echo "::error::docker run failed: $(echo "$out" | tr '\n' ' ' | cut -c1-900)"
             echo "::error::disk: $(df -h / | tail -1)"
             exit 1
@@ -85,7 +85,7 @@ jobs:
           python3 -c "import json,sys; d=json.load(open('doctor.json')); bad=[c for c in d['checks'] if c['status']=='fail' and c['id']!='key']; print(bad); sys.exit(1 if bad else 0)" || { echo "::error::system check failed: $(cat doctor.json | cut -c1-900)"; exit 1; }
           docker rm -f smoke
           # free the loaded copy before the push step rebuilds from cache
-          docker image rm cutmaster-test >/dev/null
+          docker image rm elyps-test >/dev/null
 
       - uses: docker/login-action@v3
         with:
@@ -145,3 +145,10 @@ jobs:
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf "$IMAGE@sha256:%s " *)
       - run: docker buildx imagetools inspect "$IMAGE:${{ steps.meta.outputs.version }}"
+      # Elyps was called Cutmaster: keep the old image name updated for a while
+      # so existing installs still get new versions with `cutmaster update`.
+      - name: Also publish under the old name
+        run: |
+          OLD="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/cutmaster-desktop"
+          V="${{ steps.meta.outputs.version }}"
+          docker buildx imagetools create -t "$OLD:$V" $([[ "$GITHUB_REF" == refs/tags/v* ]] && echo "-t $OLD:latest") "$IMAGE:$V"

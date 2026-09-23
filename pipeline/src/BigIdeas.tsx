@@ -14,6 +14,9 @@ const INTRO = episode.introSeconds; // length of the rendered intro clip
 const OUTRO = episode.outroSeconds;
 const SRC_START = episode.source.start;
 const SRC_END = episode.source.end;
+if (!(SRC_END > SRC_START)) {
+  throw new Error('episode.json source.end is not set. Set source.start and source.end (seconds in the camera file) from the transcript: just before the first word and just after the last.');
+}
 const FOOTAGE_FROM = INTRO * FPS;
 const FOOTAGE_FRAMES = Math.round((SRC_END - SRC_START) * FPS);
 const OUTRO_FROM = FOOTAGE_FROM + FOOTAGE_FRAMES;

@@ -111,7 +111,24 @@ finished and verified, reply with the text TASK COMPLETE and a short summary.`;
 
   const contents = [{ role: 'user', parts: [{ text: `Begin. The workspace is your current directory.\n\n${fs.readFileSync(path.join(work, taskFile), 'utf8')}` }] }];
 
+  // Messages the person sends while this runs (see /api/jobs/:id/message).
+  const inbox = path.join(jobPath || path.dirname(work), 'inbox');
+  const seenNotes = new Set();
+  const newNotes = () => {
+    if (!fs.existsSync(inbox)) return [];
+    return fs.readdirSync(inbox).filter((f) => f.endsWith('.json') && !seenNotes.has(f)).sort().map((f) => {
+      seenNotes.add(f);
+      try { return JSON.parse(fs.readFileSync(path.join(inbox, f), 'utf8')).text || ''; } catch { return ''; }
+    }).filter(Boolean);
+  };
+
   for (let step = 1; step <= MAX_STEPS; step++) {
+    for (const text of newNotes()) {
+      const note = { text: `The person just sent you a message while you were working:\n\n"${text}"\n\nTake it into account from now on; adjust now if needed and say in one line what you're changing, then carry on.` };
+      const last = contents[contents.length - 1];
+      if (last?.role === 'user') last.parts.push(note); else contents.push({ role: 'user', parts: [note] });
+      log('[status] The agent has your message');
+    }
     const res = await fetch(`${API()}/${model}:generateContent`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': token },

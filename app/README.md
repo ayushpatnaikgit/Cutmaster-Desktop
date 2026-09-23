@@ -1,4 +1,4 @@
-# Cutmaster AI
+# Elyps AI
 
 A web app around the episode pipeline: drop in a camera file and a mic file,
 type what you want, and an agent produces the episode — syncing audio,
