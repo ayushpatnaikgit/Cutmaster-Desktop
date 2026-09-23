@@ -1,0 +1,10 @@
+.git
+**/node_modules
+**/.venv
+**/.venv-oh
+data
+media
+**/logs
+**/__pycache__
+*.log
+.env

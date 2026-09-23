@@ -1,0 +1,35 @@
+<!doctype html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../node_modules/@fontsource/montserrat/400.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/montserrat/600.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/montserrat/700.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/montserrat/800.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/montserrat/900.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/merriweather/400.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/merriweather/400-italic.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/merriweather/700.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/josefin-sans/700.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/jetbrains-mono/400.css">
+<style>html,body{margin:0;background:#000}#stage{position:relative;overflow:hidden}</style>
+<div id="stage"></div>
+<script src="../node_modules/gsap/dist/gsap.min.js"></script>
+<script src="episode.js"></script>
+<script src="assets.js"></script>
+<script src="scenes.js"></script>
+<script src="clips.js"></script>
+<script>
+  const q = new URLSearchParams(location.search);
+  const stage = document.getElementById('stage');
+  const w = +(q.get('w') || 1920), h = +(q.get('h') || 1080);
+  Object.assign(stage.style, { width: w + 'px', height: h + 'px' });
+  const fonts = ['400 20px Montserrat', '600 20px Montserrat', '700 20px Montserrat', '800 20px Montserrat', '900 20px Montserrat',
+    '400 20px Merriweather', 'italic 400 20px Merriweather', '700 20px Merriweather', '700 20px "Josefin Sans"', '400 20px "JetBrains Mono"'];
+  Promise.all(fonts.map((f) => document.fonts.load(f))).then(async () => {
+    const S = window.XKDR_SCENES.build(q.get('s'), stage);
+    await Promise.all([...stage.querySelectorAll('img')].map((i) => i.decode().catch(() => {})));
+    window.__duration = S.duration;
+    window.__seek = S.seek;
+    S.seek(+(q.get('t') || 0));
+    window.__ready = true;
+  });
+</script>

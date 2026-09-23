@@ -1,0 +1,23 @@
+{
+  "title": "",
+  "subtitle": "",
+  "speaker": "",
+  "org": "",
+  "takeaway": [],
+  "intro": "lightIntroGrid",
+  "outro": "lightOutroTake",
+  "introSeconds": 6,
+  "outroSeconds": 8,
+  "music": {
+    "track": "corp-pulse",
+    "underDb": -21
+  },
+  "source": {
+    "start": 1.4,
+    "end": 205.6
+  },
+  "lowerThird": {
+    "atSource": 2.2,
+    "seconds": 4.6
+  }
+}

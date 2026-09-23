@@ -1,0 +1,185 @@
+<title>Big Ideas Openers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@700&family=JetBrains+Mono&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Montserrat:wght@400;600;700;800;900&display=swap">
+<style>
+  /* Deliberately single-theme: this page previews XKDR's own brand frames. */
+  :root {
+    --paper: #f2f1f0; --ink: #000; --coral: #f57d6a; --coral-deep: #c9523f;
+    --rule: #d6d6d6; --muted: #5f5b58; --well: #e6e4e1;
+    --sans: 'Montserrat', 'Helvetica Neue', Arial, sans-serif;
+    --serif: 'Merriweather', Georgia, serif;
+    --josefin: 'Josefin Sans', 'Montserrat', sans-serif;
+  }
+  body { background: var(--paper); color: var(--ink); font-family: var(--sans); }
+  .wrap { max-width: 1320px; margin: 0 auto; padding-inline: clamp(16px, 4vw, 48px); padding-block: 40px 72px; }
+  header { display: grid; gap: 14px; padding-bottom: 28px; border-bottom: 3px solid var(--ink); }
+  .eyebrow { display: flex; align-items: center; gap: 10px; font: 700 12px/1 var(--sans); letter-spacing: .22em; text-transform: uppercase; }
+  .eyebrow i { width: 10px; height: 10px; background: var(--coral); display: inline-block; }
+  h1 { margin: 0; font: 800 clamp(30px, 5vw, 54px)/1.05 var(--sans); letter-spacing: -.02em; text-wrap: balance; }
+  h1 .br { color: var(--coral); font-weight: 700; }
+  .lede { margin: 0; max-width: 64ch; font: 400 16px/1.7 var(--serif); color: var(--muted); }
+  .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; padding-block: 18px; border-bottom: 1px solid var(--rule); position: sticky; top: env(safe-area-inset-top, 0px); background: var(--paper); z-index: 5; }
+  .bar .lbl { font: 700 12px var(--sans); letter-spacing: .18em; text-transform: uppercase; }
+  .seg { display: inline-flex; border: 2px solid var(--ink); }
+  .seg button { font: 600 14px var(--sans); padding: 8px 16px; background: transparent; color: var(--ink); border: 0; cursor: pointer; }
+  .seg button + button { border-left: 2px solid var(--ink); }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+  .seg button:focus-visible, .ctl button:focus-visible, input[type=range]:focus-visible { outline: 3px solid var(--coral); outline-offset: 2px; }
+  .hint { font: 400 13px/1.5 var(--sans); color: var(--muted); }
+  section { padding-top: 44px; display: grid; gap: 20px; }
+  .sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  h2 { margin: 0; font: 800 26px var(--sans); letter-spacing: -.01em; }
+  h2 small { font: 600 13px var(--sans); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); margin-left: 10px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 480px), 1fr)); gap: 28px; }
+  .card { display: grid; gap: 12px; align-content: start; }
+  .screen { position: relative; aspect-ratio: 16 / 9; max-width: 100%; overflow: hidden; background: var(--well); outline: 2px solid var(--ink); }
+  .screen .stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; overflow: hidden; }
+  .ctl { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; }
+  .ctl button { width: 40px; height: 40px; border: 2px solid var(--ink); background: var(--paper); cursor: pointer; display: grid; place-items: center; padding: 0; }
+  .ctl button svg { width: 14px; height: 14px; }
+  .ctl .time { font: 400 12px 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; color: var(--muted); min-width: 9ch; text-align: right; }
+  input[type=range] { width: 100%; accent-color: var(--coral); }
+  .meta { display: grid; gap: 6px; }
+  .meta h3 { margin: 0; display: flex; align-items: center; gap: 10px; font: 700 18px var(--sans); }
+  .tag { font: 700 13px var(--josefin); padding: 5px 8px 3px; background: var(--ink); color: var(--paper); letter-spacing: .08em; }
+  .meta p { margin: 0; font: 400 14px/1.65 var(--serif); color: var(--muted); max-width: 60ch; }
+  footer { margin-top: 56px; padding-top: 22px; border-top: 3px solid var(--ink); display: grid; gap: 10px; }
+  footer p { margin: 0; font: 400 14px/1.7 var(--serif); color: var(--muted); max-width: 72ch; }
+  footer b { color: var(--ink); font-family: var(--sans); }
+  code { font: 400 13px 'JetBrains Mono', monospace; background: var(--well); padding: 1px 5px; }
+  @media (prefers-reduced-motion: reduce) { .screen { outline-width: 1px; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow"><i></i>Big Ideas by XKDR · Music · with Mayank Manish</div>
+    <h1><span class="br">{</span> Choose the music <span class="br">}</span></h1>
+    <p class="lede">The locked intro and outro, Brace Frame · Light with the typewriter and the Takeaway close, set against Bright keys and three electronic corporate tracks. Pick a track above, then press play on either preview.</p>
+  </header>
+
+  <div class="bar" role="group" aria-label="Music">
+    <span class="lbl">Music · Lyria</span>
+    <div class="seg" id="music">
+      <button type="button" data-m="off" aria-pressed="true">Off</button>
+      <button type="button" data-m="bright-keys" aria-pressed="false">Bright keys</button>
+      <button type="button" data-m="corp-pulse" aria-pressed="false">Corporate pulse</button>
+      <button type="button" data-m="corp-future" aria-pressed="false">Corporate future</button>
+      <button type="button" data-m="corp-uplift" aria-pressed="false">Corporate uplift</button>
+    </div>
+    <span class="hint" id="musicHint">Pick a track, then press play on any preview to hear it in sync.</span>
+  </div>
+
+  <section aria-labelledby="h-in">
+    <div class="sec-head"><h2 id="h-in">Intro <small>6 seconds · locked</small></h2></div>
+    <div class="grid" id="intros"></div>
+  </section>
+
+  <section aria-labelledby="h-out">
+    <div class="sec-head"><h2 id="h-out">Outro <small>8 seconds · locked</small></h2></div>
+    <div class="grid" id="outros"></div>
+  </section>
+
+  <footer>
+    <p><b>Handoff.</b> The intro fades to off-white and Mayank's footage fades up out of it. At the end the footage fades back to off-white and the outro rises in. No wipes.</p>
+    <p><b>Music.</b> All four are Google Lyria tracks. <i>Bright keys</i> (your earlier pick) has Rhodes piano and guitar over a brushed groove at 100&nbsp;BPM. <i>Corporate pulse</i> has an optimistic synth-pluck arpeggio over a soft four-on-the-floor kick at 118&nbsp;BPM. <i>Corporate future</i> has glassy synth bells, muted stabs and a smooth bassline at 110&nbsp;BPM. <i>Corporate uplift</i> has piano stabs and analog plucks over a light groove at 116&nbsp;BPM. The chosen track plays at full level over the intro and outro and sits about 19&nbsp;dB lower under Mayank's voice.</p>
+    <p><b>To choose,</b> reply with the track name, e.g. <code>Corporate future</code>.</p>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script>/*ASSETS*/</script>
+<script>/*SCENES*/</script>
+<script>
+(function () {
+  const AUDIO = /*AUDIO*/;
+  const INTROS = ['lightIntroGrid'], OUTROS = ['lightOutroTake'];
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const ICON = {
+    play: '<svg viewBox="0 0 14 14"><path d="M2 1l11 6-11 6z" fill="currentColor"/></svg>',
+    pause: '<svg viewBox="0 0 14 14"><path d="M2 1h4v12H2zM8 1h4v12H8z" fill="currentColor"/></svg>',
+  };
+  let music = 'off';
+  const players = [];
+
+  function makeCard(key, letter, host) {
+    const def = XKDR_SCENES.SCENES[key];
+    const card = document.createElement('article');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="screen"><div class="stage"></div></div>
+      <div class="ctl">
+        <button type="button" aria-label="Play ${def.kind} ${letter}"></button>
+        <input type="range" id="scrub-${key}" min="0" step="0.02" aria-label="Scrub ${def.kind} ${letter}">
+        <span class="time"></span>
+      </div>
+      <div class="meta"><h3><span class="tag">${def.kind === 'intro' ? 'INTRO' : 'OUTRO'} ${letter}</span>${def.name}</h3><p>${def.blurb}</p></div>`;
+    host.appendChild(card);
+    const screen = card.querySelector('.screen'), stage = card.querySelector('.stage');
+    const btn = card.querySelector('button'), range = card.querySelector('input'), time = card.querySelector('.time');
+    new ResizeObserver(() => { stage.style.transform = `scale(${screen.clientWidth / 1920})`; }).observe(screen);
+    const S = def.build(stage);
+    range.max = S.duration;
+    const p = { key, kind: def.kind, S, t: 0, playing: false, hold: 0, audio: null };
+    const paint = () => { S.seek(p.t); range.value = p.t; time.textContent = `${p.t.toFixed(1)} / ${S.duration.toFixed(1)}s`; btn.innerHTML = p.playing ? ICON.pause : ICON.play; btn.setAttribute('aria-label', `${p.playing ? 'Pause' : 'Play'} ${def.kind} ${letter}`); };
+    p.paint = paint;
+    p.stopAudio = () => { if (p.audio) { p.audio.pause(); p.audio = null; } };
+    p.startAudio = () => {
+      p.stopAudio();
+      if (music === 'off') return;
+      p.audio = new Audio(AUDIO[`${key}-${music}`]);
+      p.audio.currentTime = p.t;
+      p.audio.play().catch(() => {});
+    };
+    btn.addEventListener('click', () => {
+      if (p.playing) { p.playing = false; p.stopAudio(); paint(); return; }
+      if (music !== 'off') { players.forEach((o) => { if (o !== p) { o.playing = false; o.stopAudio(); o.paint(); } }); if (p.t >= S.duration - 0.05) p.t = 0; }
+      p.playing = true; p.hold = 0; p.startAudio(); paint();
+    });
+    range.addEventListener('input', () => { p.t = +range.value; p.hold = 0; if (p.audio) p.audio.currentTime = p.t; paint(); });
+    // Rest on a representative frame; autoplay silently unless reduced motion.
+    p.t = def.kind === 'intro' ? 4 : S.duration - 1.6;
+    p.playing = !reduce;
+    if (p.playing) p.t = 0;
+    paint();
+    players.push(p);
+  }
+
+  const faces = ['400 20px Montserrat', '600 20px Montserrat', '700 20px Montserrat', '800 20px Montserrat', '900 20px Montserrat',
+    '400 20px Merriweather', 'italic 400 20px Merriweather', '700 20px "Josefin Sans"', '400 20px "JetBrains Mono"'];
+  const fontsReady = Promise.race([Promise.all(faces.map((f) => document.fonts.load(f))), new Promise((r) => setTimeout(r, 3000))]);
+  fontsReady.catch(() => {}).then(() => {
+    INTROS.forEach((k, i) => makeCard(k, 'AB'[i], document.getElementById('intros')));
+    OUTROS.forEach((k, i) => makeCard(k, 'AB'[i], document.getElementById('outros')));
+  });
+
+  let last = performance.now();
+  function tick(now) {
+    const dt = Math.min(0.1, (now - last) / 1000); last = now;
+    players.forEach((p) => {
+      if (!p.playing) return;
+      if (p.t >= p.S.duration) {
+        p.hold += dt;
+        if (p.hold < 1.0) return;
+        p.t = 0; p.hold = 0;
+        if (p.audio) { p.audio.currentTime = 0; p.audio.play().catch(() => {}); }
+      } else {
+        p.t = p.audio && !p.audio.paused ? Math.min(p.audio.currentTime, p.S.duration) : Math.min(p.S.duration, p.t + dt);
+        if (p.audio && p.audio.ended) p.t = p.S.duration;
+      }
+      p.paint();
+    });
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  document.querySelectorAll('#music button').forEach((b) => b.addEventListener('click', () => {
+    music = b.dataset.m;
+    document.querySelectorAll('#music button').forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
+    players.forEach((p) => { p.stopAudio(); if (music !== 'off') { p.playing = false; p.paint(); } });
+    document.getElementById('musicHint').textContent = music === 'off'
+      ? 'Pick a track, then press play on any preview to hear it in sync.'
+      : 'Press play on any preview. One plays at a time while music is on.';
+  }));
+})();
+</script>

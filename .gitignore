@@ -141,3 +141,16 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Cutmaster
+data/
+media/*
+!media/.gitkeep
+.venv/
+.venv-oh/
+__pycache__/
+pipeline/public/*/*
+!pipeline/public/*/.gitkeep
+pipeline/src/clips.json
+pipeline/out/
+pipeline/html/episode.js

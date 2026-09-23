@@ -1,0 +1,28 @@
+# Cutmaster AI — desktop edition.
+#   cp .env.example .env      # optional: set MEDIA_DIR and PORT
+#   docker compose up --build
+#   open http://localhost:4322 and paste your Gemini API key
+services:
+  cutmaster:
+    build: .
+    image: cutmaster-desktop:latest
+    container_name: cutmaster
+    ports:
+      - "${PORT:-4322}:4322"
+    environment:
+      # Seconds the agent waits for your answer before carrying on alone.
+      ASK_TIMEOUT: "${ASK_TIMEOUT:-7200}"
+    volumes:
+      # Projects, jobs, brand kit, encrypted key, usage — survives rebuilds.
+      - cutmaster-data:/data
+      # The Whisper model downloads once and is reused.
+      - whisper-cache:/home/cutmaster/.cache/huggingface
+      # Large camera files stay where they are; use "From disk" with /media/<file>.
+      - "${MEDIA_DIR:-./media}:/media:ro"
+    # Chromium and Remotion need more shared memory than Docker's 64 MB default.
+    shm_size: "2gb"
+    restart: unless-stopped
+
+volumes:
+  cutmaster-data:
+  whisper-cache:
