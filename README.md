@@ -18,6 +18,26 @@ Drop in a recorded talk, say what you want, and get back a finished, on-brand vi
 
 <br>
 
+## Quick start
+
+With **[Docker Desktop](https://www.docker.com/products/docker-desktop/)** running (in its **Settings → Resources**, give it 8 GB of memory):
+
+**Mac · Linux**
+```sh
+curl -fsSL https://raw.githubusercontent.com/ayushpatnaikgit/Cutmaster-Desktop/main/install.sh | sh
+```
+
+**Windows** (PowerShell)
+```powershell
+irm https://raw.githubusercontent.com/ayushpatnaikgit/Cutmaster-Desktop/main/install.ps1 | iex
+```
+
+It opens in your browser. Click **Settings** (bottom left) and add a Gemini key from [aistudio.google.com/apikey](https://aistudio.google.com/apikey). Put big camera files in the `Cutmaster/media` folder in your home folder and use **From disk** → `/media/<file name>`. A full edit costs about **$1–4** in Gemini usage.
+
+`cutmaster update` gets new versions. `cutmaster status` tells you if anything's off. [More below ↓](#install)
+
+<br>
+
 ## From this, to this
 
 <table>
@@ -200,7 +220,7 @@ The app is free. The AI runs on **your own Gemini API key**, so you pay Google d
 
 | | Typical cost |
 |---|---|
-| A full edit of a 3–4 minute talk | **about $1–3** |
+| A full edit of a 3–4 minute talk | **about $1–4** (our test episode: $3.50) |
 | Each illustration | $0.07 |
 | Each music track | $0.08 |
 | Sync, transcription, rendering | free, on your computer |
