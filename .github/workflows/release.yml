@@ -66,15 +66,23 @@ jobs:
 
       - name: Smoke test — every tool the agent needs is present
         run: |
-          df -h /
-          docker images cutmaster-test
-          docker run -d --name t --shm-size 2g -p 4322:4322 cutmaster-test || { echo "::error::container failed to start"; df -h /; exit 1; }
+          echo "::notice::images: $(docker images --format '{{.Repository}}:{{.Tag}} {{.Size}}' | tr '\n' ' ')"
+          if ! out=$(docker run -d --name t --shm-size 2g -p 4322:4322 cutmaster-test 2>&1); then
+            echo "::error::docker run failed: $(echo "$out" | tr '\n' ' ' | cut -c1-900)"
+            echo "::error::disk: $(df -h / | tail -1)"
+            exit 1
+          fi
+          sleep 3
+          if [ "$(docker inspect -f '{{.State.Running}}' t)" != true ]; then
+            echo "::error::container exited: $(docker logs t 2>&1 | tail -20 | tr '\n' ' ' | cut -c1-900)"
+            exit 1
+          fi
           ok=
           for i in $(seq 1 60); do curl -fs localhost:4322/api/version && ok=1 && break; sleep 2; done
-          [ -n "$ok" ] || { echo "::error::app didn't come up"; docker logs t; exit 1; }
+          [ -n "$ok" ] || { echo "::error::app didn't come up: $(docker logs t 2>&1 | tail -20 | tr '\n' ' ' | cut -c1-900)"; exit 1; }
           curl -fs "localhost:4322/api/doctor?fresh=1" | tee doctor.json
           # everything except the (deliberately absent) API key must pass
-          python3 -c "import json,sys; d=json.load(open('doctor.json')); bad=[c for c in d['checks'] if c['status']=='fail' and c['id']!='key']; print(bad); sys.exit(1 if bad else 0)" || { docker logs t; exit 1; }
+          python3 -c "import json,sys; d=json.load(open('doctor.json')); bad=[c for c in d['checks'] if c['status']=='fail' and c['id']!='key']; print(bad); sys.exit(1 if bad else 0)" || { echo "::error::system check failed: $(cat doctor.json | cut -c1-900)"; exit 1; }
           docker rm -f t
           # free the loaded copy before the push step rebuilds from cache
           docker image rm cutmaster-test >/dev/null
