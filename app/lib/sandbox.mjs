@@ -46,13 +46,18 @@ export function asAgent(cmd, args = []) {
 }
 
 /**
- * Stop everything the agent is running — its shell, renders it detached,
- * browsers. Only one job runs at a time, so all of the agent user's
- * processes belong to it. Without a separate user, kill the worker's group.
+ * Stop everything one job's agent is running — its shell, renders it
+ * detached, browsers. Several edits run at once, so only the processes that
+ * carry this job's ELYPS_JOB_ID (every agent process inherits it from its
+ * worker) are stopped. Without a job id, all of the agent user's processes.
  */
-export function stopAgent(workerPid) {
+const KILL_JOB = 'for p in /proc/[0-9]*; do grep -qzx "ELYPS_JOB_ID=$1" "$p/environ" 2>/dev/null && kill -TERM "${p#/proc/}" 2>/dev/null; done; true';
+export function stopAgent(workerPid, jobId) {
   if (workerPid) { try { process.kill(-workerPid, 'SIGTERM'); } catch { try { process.kill(workerPid, 'SIGTERM'); } catch { /* gone */ } } }
-  if (AGENT_USER) (IS_ROOT ? execFile('pkill', ['-TERM', '-u', AGENT_USER], () => {}) : execFile('sudo', ['-n', '-u', AGENT_USER, 'pkill', '-TERM', '-u', AGENT_USER], () => {}));
+  if (!AGENT_USER) return;
+  const args = jobId ? ['sh', '-c', KILL_JOB, 'sh', String(jobId)] : ['pkill', '-TERM', '-u', AGENT_USER];
+  if (IS_ROOT) execFile(args[0], args.slice(1), () => {});
+  else execFile('sudo', ['-n', '-u', AGENT_USER, ...args], () => {});
 }
 
 /** Google's error, in words a person can act on — or null if it isn't one we explain. */

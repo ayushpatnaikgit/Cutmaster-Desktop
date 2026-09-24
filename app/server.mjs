@@ -248,8 +248,12 @@ app.get('/api/projects/:id/media/file', (req, res) => {
 });
 
 // ---------- jobs ----------
+// Several edits run side by side (MAX_EDITS, default 3 — each one renders
+// video, so more needs more memory); the rest wait their turn.
 const queue = [];
-let running = null;
+const running = new Map();
+const MAX_EDITS = Math.max(1, parseInt(process.env.MAX_EDITS, 10) || 3);
+const queuedNote = () => (running.size >= MAX_EDITS ? ` — waiting for one of the ${MAX_EDITS} running edits to finish` : '');
 
 app.post('/api/projects/:id/produce', async (req, res) => {
   if (!keyStatus().present) return res.status(400).json({ error: 'Add your Gemini API key first' });
@@ -276,7 +280,7 @@ app.post('/api/projects/:id/produce', async (req, res) => {
   const raw = path.join(jobDir(job.id), 'raw');
   fs.mkdirSync(raw, { recursive: true });
   media.forEach((m) => fs.symlinkSync(fs.realpathSync(path.join(mediaDir(project.id), m.name)), path.join(raw, m.name)));
-  emit(job.id, { kind: 'status', text: `Queued "${project.name}" with ${media.length} media file(s)` });
+  emit(job.id, { kind: 'status', text: `Queued "${project.name}" with ${media.length} media file(s)${queuedNote()}` });
   queue.push(job.id);
   pump();
   res.json(job);
@@ -339,7 +343,7 @@ app.post('/api/jobs/:id/message', (req, res) => {
 
 app.post('/api/jobs/:id/cancel', (req, res) => {
   const job = getJob(req.params.id);
-  if (job?.pid) stopAgent(job.pid);
+  if (job?.pid) stopAgent(job.pid, job.id);
   updateJob(req.params.id, { status: 'cancelled' });
   res.json({ ok: true });
 });
@@ -464,11 +468,22 @@ app.post('/api/assets/edit', async (req, res) => {
 // ---------- queue ----------
 function alive(pid) { try { process.kill(pid, 0); return true; } catch { return false; } }
 
+// Start queued jobs while there's room. A revision works in its base job's
+// workspace, so it waits while another job is using that same workspace.
 function pump() {
-  if (running || queue.length === 0) return;
-  const id = queue.shift();
+  const busy = new Set([...running.keys()].map(workOf));
+  for (let i = 0; i < queue.length && running.size < MAX_EDITS;) {
+    const id = queue[i], w = workOf(id);
+    if (busy.has(w)) { i++; continue; }
+    queue.splice(i, 1);
+    busy.add(w);
+    start(id);
+  }
+}
+
+function start(id) {
   const job = getJob(id);
-  if (!job || job.status === 'cancelled') return pump();
+  if (!job || job.status === 'cancelled') return;
   const logFile = fs.openSync(path.join(jobDir(id), 'worker.log'), 'a');
   // The worker (and the agent it starts) get a job token for the local
   // Gemini proxy, never the key itself.
@@ -477,18 +492,18 @@ function pump() {
   // Detached with no pipes: the run survives a server restart.
   const proc = spawn(process.execPath, [path.join(ROOT, 'worker.mjs'), id], {
     cwd: ROOT,
-    env: { ...process.env, ELYPS_JOB_TOKEN: token, GEMINI_BASE_URL: proxyBase() },
+    env: { ...process.env, ELYPS_JOB_TOKEN: token, ELYPS_JOB_ID: id, GEMINI_BASE_URL: proxyBase() },
     detached: true,
     stdio: ['ignore', logFile, logFile],
   });
   proc.unref();
   updateJob(id, { status: 'running', pid: proc.pid, startedAt: new Date().toISOString() });
   emit(id, { kind: 'status', text: `Worker started (pid ${proc.pid}, ${job.driver}, ${job.model})` });
-  running = { id, pid: proc.pid };
+  running.set(id, proc.pid);
   const watch = setInterval(() => {
     if (alive(proc.pid)) return;
     clearInterval(watch);
-    stopAgent();   // nothing of the agent's outlives its job
+    stopAgent(proc.pid, id);   // nothing of the agent's outlives its job
     const j = getJob(id);
     // a revision works in its base job's workspace, and counts as done only
     // if it re-rendered the video during this run
@@ -497,7 +512,7 @@ function pump() {
     const final = j.status === 'cancelled' ? 'cancelled' : done ? 'done' : (j.status === 'running' ? 'failed' : j.status);
     updateJob(id, { status: final, finishedAt: new Date().toISOString() });
     emit(id, { kind: 'status', text: `Worker finished (${final})` });
-    running = null;
+    running.delete(id);
     pump();
   }, 3000);
 }

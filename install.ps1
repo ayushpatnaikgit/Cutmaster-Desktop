@@ -61,6 +61,8 @@ PORT=$Port
 IMAGE=$Image
 # Seconds the agent waits for your answer before carrying on alone.
 ASK_TIMEOUT=7200
+# How many edits run at the same time (each needs about 2-3 GB of memory).
+MAX_EDITS=3
 "@, $utf8)
 
 [IO.File]::WriteAllText((Join-Path $HomeDir 'docker-compose.yml'), @'
@@ -74,6 +76,7 @@ services:
       - "127.0.0.1:${PORT}:4322"   # only this computer can reach it
     environment:
       ASK_TIMEOUT: "${ASK_TIMEOUT:-7200}"
+      MAX_EDITS: "${MAX_EDITS:-3}"
     volumes:
       - data:/data                                  # videos, assets, brand kit, key, usage
       - models:/home/elyps/.cache/huggingface   # speech model, downloaded once
