@@ -71,6 +71,8 @@ PORT=$PORT
 IMAGE=$IMAGE
 # Seconds the agent waits for your answer before carrying on alone.
 ASK_TIMEOUT=7200
+# Where Elyps is installed (the updater mounts it at the same path).
+ELYPS_DIR=$HOME_DIR
 EOF
 
 cat > "$HOME_DIR/docker-compose.yml" <<'EOF'
@@ -89,6 +91,35 @@ services:
       - models:/home/elyps/.cache/huggingface   # speech model, downloaded once
       - ./media:/media:ro                           # your footage: use "From disk" with /media/<file>
     shm_size: "2gb"
+    restart: unless-stopped
+  # The "Update" button: the app leaves a note in its data folder, and this
+  # small helper pulls the new version and restarts the app. It's the only
+  # piece with access to Docker; the editing agent can't reach it.
+  updater:
+    image: docker:27-cli
+    container_name: elyps-updater
+    working_dir: ${ELYPS_DIR}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${ELYPS_DIR}:${ELYPS_DIR}
+      - data:/data
+    command:
+      - sh
+      - -c
+      - |
+        while true; do
+          date +%s > /data/.updater-alive
+          if [ -f /data/.update-requested ]; then
+            rm -f /data/.update-requested
+            echo "updating $$(date)" > /data/.update-status
+            if docker compose --project-directory "$$PWD" pull app >> /data/.update-status 2>&1 && docker compose --project-directory "$$PWD" up -d app >> /data/.update-status 2>&1; then
+              echo done >> /data/.update-status
+            else
+              echo failed >> /data/.update-status
+            fi
+          fi
+          sleep 5
+        done
     restart: unless-stopped
 volumes:
   data:

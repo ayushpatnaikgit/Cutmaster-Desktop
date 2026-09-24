@@ -112,6 +112,35 @@ app.put('/api/models', (req, res) => {
 app.get('/api/doctor', async (req, res) => res.json(await doctor({ fresh: req.query.fresh === '1' })));
 app.get('/api/version', (req, res) => res.json({ version: version() }));
 
+// ---------- updates ----------
+// The newest release on GitHub (checked at most every 6 hours), and whether
+// the one-click updater (a small container next to the app) is running.
+let latest = { at: 0, tag: null, notes: '', url: '' };
+const newer = (a, b) => { const p = (v) => String(v || '').replace(/^v/, '').split(/[.-]/).map((x) => parseInt(x, 10) || 0); const x = p(a), y = p(b); for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); return false; };
+app.get('/api/update', async (req, res) => {
+  if (Date.now() - latest.at > 6 * 3600e3) {
+    try {
+      const r = await fetch('https://api.github.com/repos/ayushpatnaikgit/Elyps-AI/releases/latest', { headers: { accept: 'application/vnd.github+json' } });
+      const d = r.ok ? await r.json() : null;
+      if (d?.tag_name) latest = { at: Date.now(), tag: d.tag_name, notes: String(d.body || '').slice(0, 1200), url: d.html_url };
+      else {
+        const t = await fetch('https://api.github.com/repos/ayushpatnaikgit/Elyps-AI/tags?per_page=20').then((x) => x.json()).catch(() => []);
+        const best = (Array.isArray(t) ? t : []).map((x) => x.name).filter((n) => /^v\d/.test(n)).sort((a, b) => (newer(a, b) ? -1 : 1))[0];
+        latest = { at: Date.now(), tag: best || null, notes: '', url: 'https://github.com/ayushpatnaikgit/Elyps-AI/releases' };
+      }
+    } catch { latest.at = Date.now() - 5.5 * 3600e3; /* offline: try again in half an hour */ }
+  }
+  let helper = false;
+  try { helper = Date.now() / 1000 - Number(fs.readFileSync(path.join(DATA, '.updater-alive'), 'utf8')) < 60; } catch { /* no updater */ }
+  let status = '';
+  try { status = fs.readFileSync(path.join(DATA, '.update-status'), 'utf8').trim().split('\n').at(-1); } catch { /* never updated */ }
+  res.json({ current: version(), latest: latest.tag, available: !!latest.tag && newer(latest.tag, version()), notes: latest.notes, url: latest.url, oneClick: helper, status });
+});
+app.post('/api/update', (req, res) => {
+  try { fs.writeFileSync(path.join(DATA, '.update-requested'), new Date().toISOString()); res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // The prompt box's microphone: a recording in, text out, transcribed on this
 // machine. /warm loads the model when the mic is first pressed, so the first
 // real request doesn't wait on it.
@@ -238,6 +267,7 @@ app.post('/api/projects/:id/produce', async (req, res) => {
     projectId: project.id, status: 'queued',
     prompt: req.body.prompt || project.notes || '',
     speaker: project.speaker, org: project.org, title: project.title,
+    mode: ['interview', 'short', 'podcast', 'talk', 'product'].includes(req.body.mode) ? req.body.mode : (project.mode || 'interview'),
     driver: req.body.driver || 'openhands',
     model: req.body.model || getModels().agent,
     models: { ...getModels(), ...(req.body.model ? { agent: req.body.model } : {}) },

@@ -79,8 +79,9 @@ SUBAGENTS = {
         "work. You own exactly one graphic, named in your brief. Write only html/clips/<key>.js "
         "(and new images under public/img/ with your key as prefix). Never edit other clips, "
         "clips.js, scenes.js, episode.json or src/. Iterate until the frames look right, then "
-        "reply with the key, what the graphic shows, when each element enters, and the stills you checked.",
-        160, "lead",
+        "reply with the key, what the graphic shows, when each element enters, and the stills you checked. "
+        "Work fast: everything you need is in the brief and GRAPHICS.md, so don't explore the workspace or search.",
+        50, "lead",
     ),
     "quick-edit": (
         "Makes ONE small, clear-cut change to an existing graphic: a colour, a word, a size, a "
@@ -110,6 +111,10 @@ def _subagent_factory(prompt, which):
         if which == "quick":
             # a cheaper model with light thinking, still through the key proxy
             sub_llm = make_llm(QUICK_MODEL, "quick").model_copy(update={"reasoning_effort": "low"})
+        else:
+            # one graphic doesn't need the lead's deepest thinking; medium is
+            # several times quicker per step and still designs well
+            sub_llm = sub_llm.model_copy(update={"reasoning_effort": "medium"})
         return Agent(
             llm=sub_llm,
             tools=[TERMINAL, Tool(name="FileEditorTool")],

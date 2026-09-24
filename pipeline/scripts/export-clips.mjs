@@ -20,6 +20,11 @@ if (broken) process.exitCode = 1;
 window.XKDR_CLIPS.sort((a, b) => a.start - b.start);
 window.XKDR_CLIPS.forEach((c, i) => { const n = window.XKDR_CLIPS[i + 1]; if (n && n.start < c.end - 0.05) console.error(`overlap: ${c.key} ends at ${c.end}s but ${n.key} starts at ${n.start}s`); });
 fs.writeFileSync(path.join(root, 'src/clips.json'), JSON.stringify(window.XKDR_CLIPS, null, 1));
+// Word timings for on-screen captions (used when episode.json has captions,
+// and always in the vertical format).
+let words = [];
+try { words = JSON.parse(fs.readFileSync(path.join(root, 'transcript.json'), 'utf8')).flatMap((s) => s.words || []); } catch { /* not transcribed yet */ }
+fs.writeFileSync(path.join(root, 'src/captions.json'), JSON.stringify(words));
 console.log(`${window.XKDR_CLIPS.length} clips -> src/clips.json`);
 const modes = window.XKDR_CLIPS.map((c) => c.mode);
 let changes = 0;

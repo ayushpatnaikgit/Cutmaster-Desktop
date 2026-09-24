@@ -35,8 +35,10 @@ for line in sys.stdin:
             load()
             out = {"id": req.get("id"), "ready": True}
         else:
+            # A language hint (from the browser) stops short clips being
+            # mistaken for another language.
             segments, info = load().transcribe(req["path"], beam_size=1, vad_filter=True,
-                                               condition_on_previous_text=False)
+                                               condition_on_previous_text=False, language=req.get("language"))
             text = " ".join(s.text.strip() for s in segments).strip()
             out = {"id": req["id"], "text": text, "language": info.language}
     except Exception as e:  # report, keep serving

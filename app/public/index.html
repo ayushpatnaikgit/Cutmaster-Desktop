@@ -101,6 +101,18 @@
   .wordmark { font-family:'Bricolage Grotesque','Nunito Sans',sans-serif; font-weight:800; font-size:40px; line-height:1; letter-spacing:-.03em; height:48px; margin:0 0 18px; color:#16141f; display:flex; align-items:center; gap:12px; }
   .wordmark .mk { width:38px; height:38px; border-radius:10px; background:#16141f; color:#fff; display:grid; place-items:center; }
   .wordmark .ai { color:var(--brand); }
+  .modes { display:flex; gap:8px; flex-wrap:wrap; margin:0 0 14px; }
+  .modes button { display:inline-flex; align-items:center; gap:8px; height:36px; padding:0 14px; border-radius:999px; border:1px solid var(--line); background:var(--surface); color:var(--ink-2); font:700 13.5px var(--sans); cursor:pointer; }
+  .modes button:hover { background:var(--hover); }
+  .modes button[aria-pressed="true"] { background:#16141f; border-color:#16141f; color:#fff; }
+  .modes button:focus-visible { outline:2px solid var(--brand); outline-offset:2px; }
+  .modes .fmt { font:500 11px var(--mono); opacity:.7; }
+  .mode-hint { margin:-6px 0 12px 4px; font-size:13px; color:var(--muted); }
+  /* the update button, top right (desktop only) */
+  .upd { position:fixed; top:14px; right:16px; z-index:40; display:inline-flex; align-items:center; gap:8px; height:36px; padding:0 14px; border-radius:999px; border:0; background:#16141f; color:#fff; font:700 13.5px var(--sans); cursor:pointer; box-shadow:0 6px 18px rgba(22,20,31,.25); }
+  .upd i { width:8px; height:8px; border-radius:50%; background:#34d399; box-shadow:0 0 0 3px rgba(52,211,153,.25); }
+  .upd:hover { background:#2a2640; }
+  .upd:focus-visible { outline:2px solid var(--brand); outline-offset:2px; }
   .mon-bar { height:36px; background:#fff; border:1px solid #e2dff0; border-bottom:0; border-radius:14px 14px 0 0; display:flex; align-items:center; gap:10px; padding:0 14px; color:#5f5b72; font:400 11.5px var(--mono); }
   .mon-bar .rec { width:8px; height:8px; border-radius:50%; background:#e0442c; }
   .mon-bar b { color:#16141f; font-weight:500; letter-spacing:.06em; }
@@ -524,7 +536,7 @@ function micButton(ta) {
       cleanup(); b.classList.remove('rec'); b.classList.add('busy'); b.setAttribute('aria-label', 'Transcribing'); say('Transcribing…');
       try {
         const blob = new Blob(chunks, { type: rec.mimeType || 'audio/webm' });
-        const r = await fetch('/api/dictate', { method: 'POST', headers: { 'content-type': blob.type }, body: blob });
+        const r = await fetch('/api/dictate', { method: 'POST', headers: { 'content-type': blob.type, 'x-language': navigator.language || '' }, body: blob });
         const d = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(d.error || 'Transcription failed');
         if (d.text) { insert(d.text); say(''); } else { say('Didn’t catch that — try again'); setTimeout(() => say(''), 2500); }
@@ -613,18 +625,57 @@ function showProblem(text) {
 }
 
 /* ============================== home */
-const QUICK = [
-  ['Explainer from an interview', '#0ea5b7', 'I have an interview. Edit it, add relevant graphics at the key ideas, and make an intro and outro.'],
-  ['Graphics for a talk', '#3f5bd8', 'Add animated charts and diagrams that illustrate the main points of this talk, timed to what the speaker says.'],
-  ['Short social cut', '#7c3aed', 'Make a 60-second vertical cut of the strongest moment in this video, with large captions.'],
-  ['Just clean it up', '#0f8a5f', 'Sync the separate audio to the camera, trim the silence at the start and end, and export a clean MP4.'],
+// "Start from" suggestions, per mode: one click fills in the brief.
+const STARTS = {
+  interview: [
+    ['Explainer from an interview', 'I have an interview. Edit it, add relevant graphics at the key ideas, and make an intro and outro.'],
+    ['Charts for the numbers', 'Add animated charts whenever the speaker mentions a number or a trend, with the real figures and sources.'],
+    ['Look up the speaker', 'Look up who the speaker is, show their official profile page with their role highlighted, then add graphics at the key ideas.'],
+    ['Just clean it up', 'Sync the separate audio to the camera, trim the silence at the start and end, and export a clean MP4.'],
+  ],
+  short: [
+    ['Reel with running captions', 'Make a 30–45 second vertical reel from the strongest moment: open on the hook, bold word-by-word captions, tight cuts.'],
+    ['Three shorts from one video', 'Find the three best 30-second moments and make each a vertical short with captions and a strong first line.'],
+    ['Hook, then the point', 'Start with the most surprising sentence, then the context. Vertical, running captions, one punchy graphic for the key number.'],
+    ['Captions only, keep it raw', 'Keep the video as it is, vertical, and add large running captions with the spoken word highlighted.'],
+  ],
+  podcast: [
+    ['Clean episode with chapters', 'Clean up the audio, cut long silences, add name cards for each speaker and chapters at every topic change.'],
+    ['Pick the clip-worthy moments', 'Edit the full episode and list the three best 45-second moments that would work as clips, with timestamps.'],
+    ['Graphics only when it helps', 'Add a graphic only when a number, name or reference comes up. Most of the video should stay on the people.'],
+  ],
+  talk: [
+    ['Slides that build', 'Add a graphic for each main point that builds as the speaker explains it, like animated slides, plus a summary at the end.'],
+    ['Section cards and a map', 'Add a section card at each part of the talk and a small corner marker showing where we are in it.'],
+    ['Equations and quotes on screen', 'Put every equation, definition and quote on screen, typeset cleanly, timed to when it is said.'],
+  ],
+  product: [
+    ['60-second demo', 'Turn this screen recording into a 60-second demo: zoom into each step, highlight clicks, label each feature.'],
+    ['Speed through the boring bits', 'Keep the narration, speed up loading and typing, and zoom in on what matters with smooth push-ins.'],
+    ['Captioned walkthrough (no voice)', 'There is no narration: write short on-screen captions for each step and add calm background music.'],
+  ],
+};
+/* ============================== modes */
+// What kind of video: sets the format and the editing style the agent follows
+// (each mode has its own playbook, playbook/modes/<id>.md).
+const MODES = [
+  { id: 'interview', label: 'Interview', fmt: '16:9', hint: 'An explainer from a talk or interview: graphics beside the speaker as each idea lands.', ph: 'What should this video be? e.g. “Turn this interview into a short explainer for our channel, with graphics at the key ideas.”' },
+  { id: 'short', label: 'Influencer · Short', fmt: '9:16', hint: 'Vertical for Reels, Shorts and TikTok: a hook in the first seconds, word-by-word captions, tight cuts.', ph: 'e.g. “Cut the best 45 seconds into a vertical short with bold captions and a strong hook.”' },
+  { id: 'podcast', label: 'Podcast', fmt: '16:9', hint: 'Long conversations: clean cuts, lower thirds, chapters, and a few graphics where they help.', ph: 'e.g. “Clean up this episode, add chapters and name cards, and a graphic when a number comes up.”' },
+  { id: 'talk', label: 'Talk · Lecture', fmt: '16:9', hint: 'Keynotes and lectures: slide-like graphics that build with the argument.', ph: 'e.g. “Make this lecture easy to follow: a graphic for each main point and a summary at the end.”' },
+  { id: 'product', label: 'Product demo', fmt: '16:9', hint: 'Screen recordings and demos: zoom to what matters, highlight clicks, callouts for features.', ph: 'e.g. “Turn this screen recording into a 60-second demo: zoom into each step and label the features.”' },
 ];
+const modeOf = (id) => MODES.find((m) => m.id === id) || MODES[0];
+function currentMode() { try { return modeOf(localStorage.getItem('elyps.mode')).id; } catch { return 'interview'; } }
+
 async function home() {
   $('#page').innerHTML = `
     <div class="hm">
       <div class="hm-center"><div id="doctor" hidden></div><div class="hm-col">
         <h1 class="wordmark"><span class="mk"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="13" height="14" rx="2"/><path d="M16 10l5-3v10l-5-3"/></svg></span>Elyps <span class="ai">AI</span></h1>
-        <div class="mon-bar"><span class="rec"></span><b>NEW VIDEO</b><span style="flex:1"></span><span>00:00:00:00</span></div>
+        <div class="modes" role="group" aria-label="Kind of video">${MODES.map((m) => `<button type="button" data-mode="${m.id}" aria-pressed="${m.id === currentMode()}">${esc(m.label)} <span class="fmt">${m.fmt}</span></button>`).join('')}</div>
+        <p class="mode-hint" id="modehint"></p>
+        <div class="mon-bar"><span class="rec"></span><b id="monmode">NEW VIDEO</b><span style="flex:1"></span><span>00:00:00:00</span></div>
         <div class="stagebox" id="stage">
           <div class="fcard" style="left:70px;top:70px;width:150px;transform:rotate(-6deg)"><div class="vid"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div><span class="lbl">interview.mov</span></div>
           <div class="fcard" style="right:70px;top:86px;width:168px;padding:10px;transform:rotate(5deg)"><div class="wave">${[12,26,18,34,22,30,14,24,10,28,16,20].map((v) => `<i style="height:${v}px"></i>`).join('')}</div><span class="lbl">mic-recording.wav</span></div>
@@ -662,6 +713,20 @@ async function home() {
     : f.type.startsWith('audio/') || /\.(wav|mp3|m4a|aac)$/i.test(f.name) ? 'audio'
       : f.type.startsWith('image/') || /\.(png|jpe?g|webp|svg)$/i.test(f.name) ? 'image' : null);
   const brief = $('#brief'), start = $('#startbtn'), list = $('#picked');
+  let mode = currentMode();
+  const showMode = () => {
+    const m = modeOf(mode);
+    document.querySelectorAll('.modes [data-mode]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === mode)));
+    $('#modehint').textContent = m.hint; $('#monmode').textContent = `NEW VIDEO · ${m.label.toUpperCase()} · ${m.fmt}`; brief.placeholder = m.ph;
+    const starts = $('#starts'); starts.innerHTML = '';
+    (STARTS[mode] || STARTS.interview).forEach(([label, text]) => {
+      const b = h(`<button class="startfrom">${esc(label)}<span>→</span></button>`);
+      b.onclick = () => { brief.value = text; autosize(brief); brief.dispatchEvent(new Event('input')); brief.focus(); };
+      starts.appendChild(b);
+    });
+  };
+  document.querySelectorAll('.modes [data-mode]').forEach((b) => b.onclick = () => { mode = b.dataset.mode; try { localStorage.setItem('elyps.mode', mode); } catch { /* private window */ } showMode(); });
+  showMode();
   $('#homemic').replaceWith(micButton(brief));
   const redraw = () => {
     list.innerHTML = '';
@@ -689,13 +754,13 @@ async function home() {
     try {
       const text = brief.value.trim();
       const name = (text.split(/[.\n?!]/)[0] || 'Untitled video').slice(0, 60);
-      const p = await api('/api/projects', { method: 'POST', body: JSON.stringify({ name, notes: text }) });
+      const p = await api('/api/projects', { method: 'POST', body: JSON.stringify({ name, notes: text, mode }) });
       await uploadPicked(p.id, picked);
       const media = (await api(`/api/projects/${p.id}`)).media;
       // The project exists now: open it even if the job can't start, and say why there.
       let problem = null;
       if (media.some((m) => m.kind === 'video')) {
-        try { await api(`/api/projects/${p.id}/produce`, { method: 'POST', body: JSON.stringify({ prompt: text }) }); }
+        try { await api(`/api/projects/${p.id}/produce`, { method: 'POST', body: JSON.stringify({ prompt: text, mode }) }); }
         catch (err) { problem = err.message; }
       }
       await go('project', p.id);
@@ -703,11 +768,6 @@ async function home() {
     } catch (e) { alert(e.message); start.disabled = false; start.textContent = 'Start editing'; }
   };
 
-  QUICK.forEach(([label, , text]) => {
-    const b = h(`<button class="startfrom">${esc(label)}<span>→</span></button>`);
-    b.onclick = () => { brief.value = text; autosize(brief); redraw(); brief.focus(); };
-    $('#starts').appendChild(b);
-  });
 
   showDoctor();
   const projects = await api('/api/projects');
@@ -971,7 +1031,12 @@ async function chat(p, jobs) {
       if (e.kind === 'answer') { close(); return meSays(t.replace(/^You answered:\s*/, '')); }
       if (e.kind === 'note') { close(); return meSays(t.replace(/^You said:\s*/, '')); }
       if (e.kind === 'problem') { close(); return add(h(`<div class="doctor bad" style="width:auto;margin:0"><b>The editor stopped</b><span>${esc(t)}</span></div>`)); }
-      if (e.kind === 'status') { if (/Worker (started|finished)|Final render|Revising/.test(t)) note(t.replace(/\s*\(pid[^)]*\)/, '')); return; }
+      if (e.kind === 'status') {
+        if (/^• /.test(t)) { count++; return step(t.slice(2), t); }   // the plan-first steps
+        if (/^Plan approved/.test(t)) { close(); return note(t); }
+        if (/Worker (started|finished)|Final render|Revising/.test(t)) note(t.replace(/\s*\(pid[^)]*\)/, ''));
+        return;
+      }
       if (fin && /^@@sub:/.test(t)) { /* a helper's line while the lead is summing up: ignore */ return; }
       if (fin) { if (/^Tokens:|^\[/.test(t)) { close(); agentSays(fin.join('\n').trim()); fin = null; } else fin.push(t); return; }
       const sub = t.match(/^@@sub:([\w.-]+)\s+(.*)$/);
@@ -1142,8 +1207,49 @@ async function usage() {
   };
 }
 
-go('home');
-refreshKey().then((k) => { if (!k.present) welcomeKey(); });
+// Desktop boots straight in; Elyps Pro (which answers /api/config) signs in first.
+// (after every script has run, so pro.js is in place)
+// Desktop: a button top right when a newer Elyps is out. One click if the
+// updater helper is installed; otherwise the command to run.
+async function checkUpdate() {
+  const u = await fetch('/api/update').then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  if (!u?.available || document.querySelector('.upd')) return;
+  const b = h(`<button class="upd" type="button"><i></i>Update to ${esc(u.latest)}</button>`);
+  document.body.appendChild(b);
+  b.onclick = () => {
+    const cmd = 'elyps update';
+    const m = sheet(`<h3>Update Elyps to ${esc(u.latest)}</h3>
+      <p class="hint">You're on ${esc(u.current)}. ${u.url ? `<a href="${esc(u.url)}" target="_blank" rel="noopener">What's new</a>` : ''}</p>
+      ${u.notes ? `<div class="prose" style="max-height:220px;overflow:auto;font-size:14px">${md(u.notes)}</div>` : ''}
+      ${u.oneClick ? `<p class="hint">Elyps restarts with the new version in a minute or two. Anything running now is stopped, so wait for edits to finish first.</p>
+        <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn quiet" data-close>Later</button><button class="btn" id="updgo">Update now</button></div>`
+        : `<p class="hint">Run this in a terminal, then reload this page:</p>
+        <div style="display:flex;gap:8px;align-items:center"><code style="flex:1;padding:10px 12px;border-radius:8px;background:#16141f;color:#fff;font:500 14px var(--mono)">${cmd}</code><button class="btn quiet small" id="updcopy">Copy</button></div>
+        <p class="hint" style="margin-top:10px">Tip: run the installer again once to get one-click updates from this button.</p>`}`);
+    const go = $('#updgo', m);
+    if (go) go.onclick = async () => {
+      go.disabled = true; go.textContent = 'Updating…';
+      await fetch('/api/update', { method: 'POST' });
+      const t0 = Date.now();
+      const wait = setInterval(async () => {
+        const v = await fetch('/api/version').then((r) => r.json()).catch(() => null);
+        if (v?.version && v.version.replace(/^v/, '') === String(u.latest).replace(/^v/, '')) { clearInterval(wait); location.reload(); }
+        else if (Date.now() - t0 > 6 * 60e3) { clearInterval(wait); go.textContent = 'Taking a while — reload later'; }
+      }, 4000);
+    };
+    const cp = $('#updcopy', m);
+    if (cp) cp.onclick = async () => { try { await navigator.clipboard.writeText(cmd); cp.textContent = 'Copied'; } catch { cp.textContent = 'Select and copy'; } };
+  };
+}
+
+document.addEventListener('DOMContentLoaded', async function boot() {
+  const cfg = await fetch('/api/config').then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
+  if (cfg.edition === 'pro' && window.ElypsPro) return window.ElypsPro.boot(cfg);
+  go('home');
+  refreshKey().then((k) => { if (!k.present) welcomeKey(); });
+  checkUpdate();
+});
 </script>
+<script src="/pro.js"></script>
 </body>
 </html>

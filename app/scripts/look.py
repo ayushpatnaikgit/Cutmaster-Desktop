@@ -1,26 +1,36 @@
 #!/usr/bin/env python3
 """Look at an image and critique it, using Gemini's vision model.
 
-Usage: python3 scripts/look.py <image> ["question"]
+Usage: python3 scripts/look.py <image> [<image>...] ["question"]
 
-Gives the agent eyes: render a still, then ask what's wrong with it. Prints a
-short, specific critique on stdout. Needs GEMINI_API_KEY in the environment.
+Gives the agent eyes: render stills, then ask what's wrong with them — all the
+stills of one graphic in a single call. Prints a short, specific critique on
+stdout. Needs GEMINI_API_KEY in the environment.
 """
 import base64, json, os, sys, urllib.request
 
-path = sys.argv[1]
-question = sys.argv[2] if len(sys.argv) > 2 else (
-    "You are a demanding motion-graphics director reviewing one frame of an explainer video. "
-    "Is it well composed? Say specifically what looks empty, cramped, overlapping, cut off, "
-    "off-brand, low-contrast or hard to read, and what you would change. Be concrete and brief."
+args = sys.argv[1:]
+paths = [a for a in args if os.path.isfile(a)]
+extra = [a for a in args if not os.path.isfile(a)]
+question = extra[-1] if extra else (
+    "You are a demanding motion-graphics director reviewing "
+    + ("one frame" if len(paths) == 1 else f"{len(paths)} frames, in time order,")
+    + " of one graphic in an explainer video. Say specifically what looks empty, cramped, "
+    "overlapping, cut off, off-brand, low-contrast or hard to read, and what to change. "
+    "Only real problems a viewer would notice, most important first, at most five. "
+    "If it looks good, say so in one line. Be concrete and brief."
 )
 model = os.environ.get("LOOK_MODEL", "gemini-3.1-pro-preview")
 key = os.environ["GEMINI_API_KEY"]
-mime = "image/jpeg" if path.lower().endswith((".jpg", ".jpeg")) else "image/png"
-with open(path, "rb") as f:
-    data = base64.b64encode(f.read()).decode()
+parts = []
+for path in paths:
+    mime = "image/jpeg" if path.lower().endswith((".jpg", ".jpeg")) else "image/png"
+    with open(path, "rb") as f:
+        parts += [{"text": os.path.basename(path)}, {"inline_data": {"mime_type": mime, "data": base64.b64encode(f.read()).decode()}}]
+if not parts:
+    sys.exit("look.py: no image found — give it the path of a rendered still")
 
-body = {"contents": [{"parts": [{"inline_data": {"mime_type": mime, "data": data}}, {"text": question}]}]}
+body = {"contents": [{"parts": parts + [{"text": question}]}]}
 req = urllib.request.Request(
     f"{os.environ.get('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta')}/models/{model}:generateContent",
     data=json.dumps(body).encode(), headers={"Content-Type": "application/json", "x-goog-api-key": key},

@@ -188,6 +188,10 @@ Then:
 | `elyps media` | Open your footage folder |
 | `elyps uninstall` | Remove it, keeping your videos unless you say otherwise |
 
+When a new version is out, an **Update** button appears at the top right of
+the app: one click and it restarts on the new version. (Installed before
+1.2.0? Run the installer once more to get the one-click button.)
+
 <br>
 
 ## How it works

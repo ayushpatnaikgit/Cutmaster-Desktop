@@ -13,7 +13,9 @@ fs.writeFileSync(path.resolve(import.meta.dirname, '../html/episode.js'), `windo
 const args = process.argv.slice(2);
 const opt = (k, d) => { const i = args.indexOf('--' + k); return i >= 0 ? args[i + 1] : d; };
 const scene = args[0];
-const w = +opt('w', 1920), h = +opt('h', 1080), fps = +opt('fps', 25);
+// Vertical episodes: intro/outro fill 1080×1920; graphics fill the top half, 1080×960.
+const VERT = ep.format === 'vertical', whole = [ep.intro, ep.outro].includes(scene);
+const w = +opt('w', VERT ? 1080 : 1920), h = +opt('h', VERT ? (whole ? 1920 : 960) : 1080), fps = +opt('fps', 25);
 const url = `file://${path.resolve(import.meta.dirname, '../html/scene.html')}?s=${scene}&w=${w}&h=${h}`;
 
 const browser = await puppeteer.launch({

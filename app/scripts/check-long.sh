@@ -5,8 +5,11 @@
 # Usage: ./scripts/check-long.sh <name> [seconds_to_wait]
 name="$1"; wait_s="${2:-240}"
 [ -f "logs/$name.log" ] || { echo "no such job: $name"; exit 1; }
+pid=$(cat "logs/$name.pid" 2>/dev/null || true)
 for i in $(seq 1 "$wait_s"); do
   [ -f "logs/$name.done" ] && break
+  # the process is gone but never wrote its marker: it's over either way
+  if [ -n "$pid" ] && ! kill -0 "$pid" 2>/dev/null; then sleep 1; [ -f "logs/$name.done" ] || echo "?" > "logs/$name.done"; break; fi
   sleep 1
 done
 echo "--- last lines of logs/$name.log ---"

@@ -8,7 +8,7 @@ import { stageAssets } from './lib/assets.mjs';
 import { runOpenHands } from './drivers/openhands.mjs';
 import { runGemini } from './drivers/gemini.mjs';
 import { AGENT_USER, asAgent, agentEnv, proxyBase } from './lib/sandbox.mjs';
-import { getModels } from './lib/models.mjs';
+import { getModels, modelEnv } from './lib/models.mjs';
 
 const id = process.argv[2];
 const log = (text, kind = 'worker') => { emit(id, { kind, text: String(text) }); console.log(text); };
@@ -51,6 +51,9 @@ function prepare() {
   if (job.title) ep.title = job.title;
   fs.writeFileSync(path.join(work, 'episode.json'), JSON.stringify(ep, null, 2));
 
+  // The kind of video (interview, short, podcast, talk, product): its own playbook.
+  const modeFile = path.join(ROOT, 'playbook', 'modes', `${job.mode || 'interview'}.md`);
+  if (fs.existsSync(modeFile)) fs.copyFileSync(modeFile, path.join(work, 'MODE.md'));
   fs.writeFileSync(path.join(work, 'TASK.md'), taskBrief());
   if (job.projectId && stageAssets(work, job.projectId)) {
     log('Copied brand and project assets into the workspace (see ASSETS.md)', 'status');
@@ -67,13 +70,14 @@ function taskBrief() {
     job.org && `- Speaker's organisation: ${job.org}`,
     job.title && `- Title: ${job.title}`,
   ].filter(Boolean).join('\n');
+  const mode = job.mode && job.mode !== 'interview' ? `\n## Kind of video\n\nThey chose **${job.mode}**. Read \`MODE.md\` — it overrides the playbook's defaults for format, pacing and graphics.\n` : '';
   return `# The request
 
 ${job.prompt || '(The person attached footage but did not say anything yet. Ask them what they want.)'}
 
 ## Files they gave you
 ${files}
-${known ? `\n## Already known\n${known}\n` : ''}
+${known ? `\n## Already known\n${known}\n` : ''}${mode}
 Read \`AGENTS.md\` first — it is how you work. Talk to the person with
 \`scripts/ask-user.py\`; they are watching and will answer.
 `;
@@ -188,6 +192,62 @@ async function directRevision(t) {
   return false;
 }
 
+// ---------- the plan, before the agent (about a minute) ----------
+// Everything before the plan is the same for every video, so a script does it
+// in parallel (scripts/quickstart.py): footage, audio, a quick transcript,
+// frames, the brand, and a plan drafted in one Gemini call. The person sees
+// the plan within a minute or two; the exact word-timed transcript finishes
+// in the background while they read it; the agent starts after they answer.
+const QUICK_STEPS = [
+  [/^Footage:/, 'Looking at the footage'], [/^Synced the mic|^Mic sync/, 'Syncing the camera and the mic'], [/^Took the audio/, 'Preparing the audio'],
+  [/^Quick transcript/, 'Transcribing the talk'], [/^Took \d+ frames/, 'Watching the video'], [/^Looked up the speaker/, 'Looking up the speaker'], [/^Started the word-timed/, 'Timing every word (in the background)'], [/^Plan drafted/, 'Drafting the plan'],
+];
+function agentRun(cmd, onLine) {
+  return new Promise((resolve) => {
+    const [c, a] = asAgent('bash', ['-lc', cmd]);
+    const p = spawn(c, a, { cwd: work, env: agentEnv(process.env, process.env.ELYPS_JOB_TOKEN, { ...modelEnv({ ...getModels(), ...(job.models || {}) }), STUDIO_JOB_DIR: jobDir(id), STUDIO_JOB_ID: id }) });
+    let out = '', buf = '';
+    const eat = (d) => { out += d; buf += d; let i; while ((i = buf.indexOf('\n')) >= 0) { onLine?.(buf.slice(0, i)); buf = buf.slice(i + 1); } };
+    p.stdout.on('data', eat); p.stderr.on('data', (d) => { out += d; });
+    p.on('close', (code) => resolve({ ok: code === 0, out }));
+  });
+}
+async function planFirst() {
+  if (AGENT_USER) { try { execFileSync('chgrp', ['-Rf', 'studio', jobDir(id)]); } catch { /* ok */ } try { execFileSync('chmod', ['-Rf', 'g+rwX', jobDir(id)]); } catch { /* ok */ } }
+  log('Understanding the footage and drafting a plan', 'status');
+  const r = await agentRun('python3 scripts/quickstart.py', (line) => {
+    const t = line.replace(/^\[\s*[\d.]+s\]\s*/, '');
+    const step = QUICK_STEPS.find(([re]) => re.test(t));
+    if (step) log(`• ${step[1]}`, 'status');
+    console.log(line);
+  });
+  if (!r.ok || !fs.existsSync(path.join(work, 'plan.md'))) { log('The quick plan didn\'t work out — the agent will plan it instead', 'status'); console.log(r.out.slice(-1500)); return; }
+  const a = await agentRun('python3 scripts/ask-user.py --type beats --title "Plan" --file plan.md');
+  const answer = a.out.trim().split('\n').filter(Boolean).at(-1) || '';
+  fs.appendFileSync(path.join(work, 'TASK.md'), `
+## Already done for you — start building
+
+- The footage is probed and the audio is ready: \`public/audio/clean.wav\` (camera timeline).
+- The exact word-timed transcript is being made in the background:
+  \`./scripts/check-long.sh transcribe\` → \`transcript.json\` (read it with
+  \`scripts/read-transcript.py\`). \`transcript-draft.txt\` has the same talk with rough times.
+- A plan was drafted and **sent to the person**: \`plan.md\` (and \`plan.json\`: title, speaker,
+  org, palette, fonts, source trim, beats, research with sources). Frames are in \`review/frames/\`.
+- **Their answer to the plan:**
+
+> ${answer.replace(/\n/g, '\n> ')}
+
+So don't re-explore or re-plan: skip sections 1–2 of AGENTS.md. Apply their answer (if they
+changed something, adjust the plan — no need to ask again unless it's genuinely unclear), put the
+plan's details into \`episode.json\`, then build: graphics via subagents, music, render, check,
+deliver. You don't need to read README.md; the scripts you need are named in AGENTS.md.
+Send every graphics brief in one step as soon as the beats are set, each with the numbers and word
+timings it needs (from \`plan.json\` and \`scripts/find-words.py\`), so they build in parallel.
+Don't read \`scenes.js\`, \`clips.js\` or the example clips yourself — that's the subagents' job.
+`);
+  log('Plan approved — the agent is building it', 'status');
+}
+
 try {
   if (clipTarget) {
     updateJob(id, { work });
@@ -195,11 +255,12 @@ try {
     log(`Driver finished: ${JSON.stringify({ ok })}`, 'status');
     process.exit(ok ? 0 : 1);
   }
-  if (isRevision) prepareRevision(); else prepare();
+  if (isRevision) prepareRevision(); else { prepare(); if (process.env.ELYPS_QUICKSTART !== '0') await planFirst(); }
   // The agent runs as its own user (Docker): let it write its workspace.
   if (AGENT_USER) {
-    try { execFileSync('chgrp', ['-Rf', 'studio', jobDir(id)]); } catch { /* files the agent made are already its group */ }
-    execFileSync('chmod', ['-Rf', 'g+rwX', jobDir(id)]);
+    // files the agent already made are its own (and already group-writable): skip what we can't change
+    try { execFileSync('chgrp', ['-Rf', 'studio', jobDir(id)]); } catch { /* ok */ }
+    try { execFileSync('chmod', ['-Rf', 'g+rwX', jobDir(id)]); } catch { /* ok */ }
   }
   updateJob(id, { work });
   const result = await driver({ job, work, jobPath: jobDir(id), taskFile: isRevision ? 'REVISION.md' : 'TASK.md', token: process.env.ELYPS_JOB_TOKEN, log });

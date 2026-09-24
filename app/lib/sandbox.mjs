@@ -33,9 +33,16 @@ export function agentEnv(base, token, extra = {}) {
   };
 }
 
-/** Run a command as the agent's user when one is configured (Docker). */
+/**
+ * Run a command as the agent's user when one is configured. As root (an
+ * Elyps Pro edit container, where Cloud Run forbids sudo) that's a plain
+ * privilege drop with setpriv; otherwise sudo (the desktop image).
+ */
+const IS_ROOT = typeof process.getuid === 'function' && process.getuid() === 0;
 export function asAgent(cmd, args = []) {
-  return AGENT_USER ? ['sudo', ['-n', '-E', '-u', AGENT_USER, '--', cmd, ...args]] : [cmd, args];
+  if (!AGENT_USER) return [cmd, args];
+  if (IS_ROOT) return ['setpriv', ['--reuid', AGENT_USER, '--regid', 'studio', '--init-groups', '--', cmd, ...args]];
+  return ['sudo', ['-n', '-E', '-u', AGENT_USER, '--', cmd, ...args]];
 }
 
 /**
@@ -45,7 +52,7 @@ export function asAgent(cmd, args = []) {
  */
 export function stopAgent(workerPid) {
   if (workerPid) { try { process.kill(-workerPid, 'SIGTERM'); } catch { try { process.kill(workerPid, 'SIGTERM'); } catch { /* gone */ } } }
-  if (AGENT_USER) execFile('sudo', ['-n', '-u', AGENT_USER, 'pkill', '-TERM', '-u', AGENT_USER], () => {});
+  if (AGENT_USER) (IS_ROOT ? execFile('pkill', ['-TERM', '-u', AGENT_USER], () => {}) : execFile('sudo', ['-n', '-u', AGENT_USER, 'pkill', '-TERM', '-u', AGENT_USER], () => {}));
 }
 
 /** Google's error, in words a person can act on — or null if it isn't one we explain. */

@@ -13,7 +13,8 @@ beautiful, calm, well-timed animation — and to prove it looks right.
   touch their files, `html/clips.js`, `html/scenes.js`, `episode.json` or `src/`.
 - New images: `public/img/<key>-<name>.jpg`, and their keyed-out versions in
   `public/img/clean/`. Review stills go in `review/<key>/`.
-- `html/clips/_example-*.js` show the pattern. Read one first.
+- Everything you need to know about the kit is on this page — **don't open
+  `scenes.js`, `scene.html`, `clips.js`, the examples or the scripts' source**.
 
 ```js
 // html/clips/clipCo2.js
@@ -29,6 +30,13 @@ beautiful, calm, well-timed animation — and to prove it looks right.
 In `half` mode the speaker sits on the left (x 60, y 60, 840×960) and your
 graphic owns the column **x 990–1860, y 90–990**. Never put anything over the
 speaker.
+
+**Vertical videos** (`"format": "vertical"` in episode.json — the short-form
+mode): your stage is **1080×960**, the top half of the phone screen; the speaker
+is in the bottom half. Use x 60–1020, y 60–900 (`GX` doesn't apply — lay out
+for the narrow stage). Fewer, bigger elements: one number, three words, one
+icon or one simple chart, 64 px text or larger. Captions are drawn separately;
+don't put the spoken words in your graphic.
 
 ## Every frame is a function of time
 
@@ -52,8 +60,19 @@ The clip is rendered by seeking to each frame and taking a screenshot. So:
 - **d3** (`d3.scaleLinear`, `d3.line`, `d3.area`, `d3.curveCatmullRom`,
   `d3.geoPath`…) for charts and layouts — use d3 for the maths and GSAP for
   the motion.
-- Brand helpers in `XKDR_KIT`: `eyebrow`, `head`, `serif`, `chip`, `img`,
-  `illustrative`, `rise`, colours `C`, fonts `F`.
+- Brand helpers in `XKDR_KIT` (every one returns the element; `p` is the
+  parent, positions are absolute px):
+  - `el(p, cssObject, html?, tag?)` — an absolutely positioned element
+  - `text(p, x, y, html, css?)`, `head(p, x, y, html, size=56, color?, width=820)`,
+    `serif(p, x, y, html, size=36, width=820)` (italic quote style),
+    `eyebrow(p, x, y, 'LABEL')` (small caps label with a coral square)
+  - `chip(p, x, y, label, filled?)`, `sq(p, x, y, size, color)`,
+    `illustrative(p, x, y)` (the "Illustrative" tag)
+  - `img(p, 'name.jpg', css)` — loads `public/img/clean/name.png`
+  - `rise(tl, targets, at, { y: 14, d: 0.9, stagger: 0 })` — fade up into place
+  - `C` = `{ bg '#f2f1f0', coral '#f57d6a', ink '#000', grey '#d6d6d6', mid '#7a7a7a', white '#fff' }`,
+    `F` = `{ sans (Montserrat), serif (Merriweather), josefin, mono }`, `GX` = 990 (column left)
+  - `H.rng(seed)` → a seeded `() => 0..1`
 - Illustrations: `node scripts/gen-image.mjs <key>-<name> 1:1 "<subject, style, palette>"`,
   then key the background out (README step 6).
 - Web captures the lead gives you (`public/web/*.png|mp4`) can be framed as a
@@ -107,6 +126,23 @@ Prefer illustrations **built in code**, so every part of them can move:
   Quotes are exact transcript words.
 - The last 0.5 s fades out automatically; don't fight it.
 
+## Work fast
+
+The whole video waits for the slowest graphic, so aim to finish in about
+**15 steps**:
+
+1. Your brief has the words, timings, numbers and assets. Don't search the
+   web, don't browse the workspace, don't re-read the transcript beyond your
+   clip's range (one `read-transcript.py` call if the brief lacks timings).
+   A number you don't have is shown with `illustrative(...)`, not looked up.
+2. Write the whole file in one go.
+3. Render the stills and look at them together, once (below). Fix, re-render
+   only if something was broken, and deliver.
+
+Don't prototype pieces in `node -e` or `python3 -c`; do the maths in the clip
+itself. Don't generate images unless the brief asks for one — an SVG built
+in code is faster and moves better.
+
 ## Keep your context lean
 
 Every step re-sends everything you've seen, so print little: read the talk
@@ -115,13 +151,15 @@ ranges, and never print whole JSON files or logs.
 
 ## Prove it
 
-1. Render stills at the key moments — when each element has just arrived, and
-   the busiest frame:
+1. Render 3–4 stills at the key moments — when each element has just
+   arrived, and the busiest frame:
    `node scripts/render-html.mjs <key> --stills 1,3.5,6,9 --outdir review/<key>`
-2. Look at each: `python3 scripts/look.py review/<key>/<key>_6.png`
-3. Fix what it says. Look again. **At most three rounds of looking** — then
-   deliver. The reviewer always finds something; past the third round you're
-   polishing details nobody will notice while the whole video waits for you.
+2. Look at all of them in **one** call:
+   `python3 scripts/look.py review/<key>/*.png`
+3. Fix what it says that a viewer would notice (overlaps, cut-off text, empty
+   column, unreadable labels). **One round of looking**; look a second time
+   only if you fixed something that was broken. Then deliver — the reviewer
+   always finds something more, and the whole video is waiting for you.
 4. A page error or a blank frame means your script threw — the render prints
    it. Fix it before anything else.
 

@@ -30,7 +30,7 @@ export function createProject(fields = {}) {
   fs.mkdirSync(path.join(PROJECTS_DIR, id, 'media'), { recursive: true });
   const project = {
     id, name: fields.name || 'Untitled episode', speaker: fields.speaker || '', org: fields.org || '',
-    title: fields.title || '', notes: fields.notes || '', createdAt: new Date().toISOString(),
+    title: fields.title || '', notes: fields.notes || '', mode: ['interview', 'short', 'podcast', 'talk', 'product'].includes(fields.mode) ? fields.mode : 'interview', createdAt: new Date().toISOString(),
   };
   fs.writeFileSync(projectFile(id), JSON.stringify(project, null, 2));
   return project;

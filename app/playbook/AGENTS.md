@@ -113,8 +113,13 @@ brief and the workspace:
 - what is said, with the word timings from `scripts/find-words.py`;
 - the one idea it must land, and the visual you have in mind (a chart with
   these numbers, a diagram with these parts, a captured page to frame…);
+- **every number, name and label it will show** — subagents don't search, so
+  anything you leave out ends up marked "Illustrative";
 - palette (hex), fonts, and asset files to use (`public/img/...`, `public/web/...`);
-- "Read GRAPHICS.md first."
+- "Read GRAPHICS.md first. Work fast: about 15 steps, one review round."
+
+Send all the graphics briefs in **one step**, as soon as the beat sheet is
+set, so they build side by side while you do the music and the rest.
 
 Give each task a short description naming the graphic ("CO2 chart",
 "Satellite reveal") — the person sees it in the app. Up to six at a time.
