@@ -64,7 +64,11 @@ def gemini_text():
 
 def whisper_words(language=None):
     from faster_whisper import WhisperModel, BatchedInferencePipeline
-    m = WhisperModel(WHISPER, device='cpu', compute_type='int8', cpu_threads=max(2, os.cpu_count() or 4))
+    # Half the cores, with threads that sleep while they wait: two edits
+    # transcribing at once with every core each (and OpenMP's spin-waiting)
+    # ran 15x slower than this (218 s vs 14 s for a minute of audio).
+    os.environ.setdefault('OMP_WAIT_POLICY', 'PASSIVE')
+    m = WhisperModel(WHISPER, device='cpu', compute_type='int8', cpu_threads=max(2, (os.cpu_count() or 4) // 2))
     segs, info = BatchedInferencePipeline(model=m).transcribe(audio, word_timestamps=True, batch_size=8, language=language)
     segs = list(segs)
     return segs, info.language
