@@ -80,7 +80,8 @@ SUBAGENTS = {
         "(and new images under public/img/ with your key as prefix). Never edit other clips, "
         "clips.js, scenes.js, episode.json or src/. Iterate until the frames look right, then "
         "reply with the key, what the graphic shows, when each element enters, and the stills you checked. "
-        "Work fast: everything you need is in the brief and GRAPHICS.md, so don't explore the workspace or search.",
+        "Work fast: everything you need is in the brief and GRAPHICS.md. At most three steps (about a minute) "
+        "looking around, then write your file.",
         50, "lead",
     ),
     "quick-edit": (
@@ -216,6 +217,8 @@ conversation = Conversation(
     callbacks=[on_event],
     visualizer=ElypsVisualizer(),
     persistence_dir=os.environ.get("OH_STATE_DIR", str(work.parent / "openhands-state")),
+    # a bounded pass (the review after a quick edit) caps the lead's steps
+    **({"max_iteration_per_run": int(os.environ["ELYPS_MAX_STEPS"])} if os.environ.get("ELYPS_MAX_STEPS") else {}),
 )
 
 task_file = os.environ.get("TASK_FILE", "TASK.md")

@@ -221,9 +221,10 @@ async function planFirst() {
     if (step) log(`• ${step[1]}`, 'status');
     console.log(line);
   });
-  if (!r.ok || !fs.existsSync(path.join(work, 'plan.md'))) { log('The quick plan didn\'t work out — the agent will plan it instead', 'status'); console.log(r.out.slice(-1500)); return; }
+  if (!r.ok || !fs.existsSync(path.join(work, 'plan.md'))) { log('The quick plan didn\'t work out — the agent will plan it instead', 'status'); console.log(r.out.slice(-1500)); return false; }
   const a = await agentRun('python3 scripts/ask-user.py --type beats --title "Plan" --file plan.md');
   const answer = a.out.trim().split('\n').filter(Boolean).at(-1) || '';
+  fs.writeFileSync(path.join(work, 'ANSWER.txt'), answer + '\n');   // for the quick edit
   fs.appendFileSync(path.join(work, 'TASK.md'), `
 ## Already done for you — start building
 
@@ -245,7 +246,68 @@ Send every graphics brief in one step as soon as the beats are set, each with th
 timings it needs (from \`plan.json\` and \`scripts/find-words.py\`), so they build in parallel.
 Don't read \`scenes.js\`, \`clips.js\` or the example clips yourself — that's the subagents' job.
 `);
-  log('Plan approved — the agent is building it', 'status');
+  log(job.speed === 'deep' ? 'Plan approved — the agent is building it' : 'Plan approved — building it', 'status');
+  return true;
+}
+
+// ---------- the lead's review, after a quick edit ----------
+// The first cut is already watchable. The lead agent looks at it and, only
+// if something a viewer would notice is off, sends graphics subagents (all
+// at once) to fix those parts, then re-renders. Bounded: a short pass, not
+// a second edit. The first cut stays in place until a better one is done.
+const REVIEW = `# Review the quick cut
+
+A script already made the whole video from the approved plan: \`out/episode.mp4\`
+(its decisions are in \`logs/fastcut.json\`, the graphics in \`html/clips/*.js\`,
+their stills in \`review/<key>/\`). You're the lead editor: check it, and improve
+only what a viewer would notice. Be quick: **you have 15 steps**. Don't open or
+grep the graphics' source files, the scripts or src/ — judging is done by looking;
+fixing is the subagents' job.
+
+1. Take 6 frames spread across \`out/episode.mp4\` (ffmpeg, into \`review/final/\`)
+   and look at them in **one** call: \`python3 scripts/look.py review/final/*.png\`.
+   Look at the graphics' stills the same way, in one call.
+2. If nothing a viewer would notice is wrong (overlaps, cut-off or unreadable
+   text, an empty or broken graphic, a caption over a graphic, a wrong fact),
+   stop now and say in one line that the cut is good.
+3. Otherwise, in **one step**, send a \`graphics\` subagent for each graphic that
+   needs work — they run in parallel. Give each its key, start and end, its brief
+   from \`logs/fastcut.json\`, and the exact problems. Don't edit clips yourself,
+   and don't add graphics, research, re-plan or change the cut.
+4. When they're back: \`node scripts/export-clips.mjs\`, then
+   \`./scripts/render-all.sh <the keys that changed>\`, then render to a new file and
+   swap it in only when it's done:
+   \`./scripts/run-long.sh final "./scripts/render-final.sh out/next.mp4 && mv out/next.mp4 out/episode.mp4"\`
+   and \`./scripts/check-long.sh final\`.
+5. Say in two lines what you changed.
+`;
+
+async function leadReview() {
+  log('First cut ready — the lead agent is checking it', 'status');
+  fs.writeFileSync(path.join(work, 'REVIEW.md'), REVIEW);
+  if (AGENT_USER) { try { execFileSync('chgrp', ['-Rf', 'studio', work]); } catch { /* ok */ } try { execFileSync('chmod', ['-Rf', 'g+rwX', work]); } catch { /* ok */ } }
+  const r = await runOpenHands({ job, work, jobPath: jobDir(id), taskFile: 'REVIEW.md', token: process.env.ELYPS_JOB_TOKEN, log, env: { ELYPS_MAX_STEPS: '25' } }).catch((e) => ({ ok: false, error: e.message }));
+  // the first cut is there whatever happened in the review
+  if (!fs.existsSync(path.join(work, 'out', 'episode.mp4'))) log('The review lost the video — this is a bug', 'worker-err');
+  log(r?.ok === false ? 'The review stopped early; the first cut is the video' : 'Review finished', 'status');
+}
+
+// ---------- the quick edit (the default) ----------
+// From the approved plan to the finished video with a script and a handful
+// of model calls (scripts/fastcut.py): a few minutes instead of an agent's
+// half hour. If it stops, the agent finishes from where it got to.
+async function quickEdit() {
+  const r = await agentRun(`python3 scripts/fastcut.py --mode ${job.mode || 'interview'} --answer ANSWER.txt`, (line) => {
+    const m = /^STEP (.*)/.exec(line.trim());
+    if (m) log(`• ${m[1]}`, 'status');
+    console.log(line);
+  });
+  if (r.ok && fs.existsSync(path.join(work, 'out', 'episode.mp4'))) return true;
+  const note = fs.existsSync(path.join(work, 'FASTCUT.md')) ? fs.readFileSync(path.join(work, 'FASTCUT.md'), 'utf8') : `# The quick edit stopped\n\n${r.out.slice(-1500)}\n`;
+  const why = (/\*\*Stopped at:\*\* (.*)/.exec(note) || [])[1] || 'an error';
+  log(`The quick edit stopped (${why.slice(0, 160)}) — the agent is finishing it`, 'status');
+  fs.appendFileSync(path.join(work, 'TASK.md'), `\n${note}\nPick up from there: don't redo what's done. Read FASTCUT.md, finish what's left, then deliver.\n`);
+  return false;
 }
 
 try {
@@ -255,7 +317,19 @@ try {
     log(`Driver finished: ${JSON.stringify({ ok })}`, 'status');
     process.exit(ok ? 0 : 1);
   }
-  if (isRevision) prepareRevision(); else { prepare(); if (process.env.ELYPS_QUICKSTART !== '0') await planFirst(); }
+  if (isRevision) prepareRevision();
+  else {
+    prepare();
+    const planned = process.env.ELYPS_QUICKSTART !== '0' && await planFirst();
+    if (planned && job.speed !== 'deep') {
+      updateJob(id, { work });
+      if (await quickEdit()) {
+        if (process.env.ELYPS_REVIEW !== '0') await leadReview();
+        log('Driver finished: {"ok":true,"quick":true}', 'status');
+        process.exit(0);
+      }
+    }
+  }
   // The agent runs as its own user (Docker): let it write its workspace.
   if (AGENT_USER) {
     // files the agent already made are its own (and already group-writable): skip what we can't change

@@ -108,6 +108,11 @@
   .modes button:focus-visible { outline:2px solid var(--brand); outline-offset:2px; }
   .modes .fmt { font:500 11px var(--mono); opacity:.7; }
   .mode-hint { margin:-6px 0 12px 4px; font-size:13px; color:var(--muted); }
+  /* quick / deep, next to Start */
+  .speed { display:inline-flex; border:1px solid var(--line); border-radius:999px; padding:3px; gap:2px; background:var(--surface); }
+  .speed button { height:30px; padding:0 12px; border:0; border-radius:999px; background:transparent; color:var(--ink-2); font:700 12.5px var(--sans); cursor:pointer; }
+  .speed button[aria-pressed="true"] { background:#16141f; color:#fff; }
+  .speed button:focus-visible { outline:2px solid var(--brand); outline-offset:2px; }
   /* the update button, top right (desktop only) */
   .upd { position:fixed; top:14px; right:16px; z-index:40; display:inline-flex; align-items:center; gap:8px; height:36px; padding:0 14px; border-radius:999px; border:0; background:#16141f; color:#fff; font:700 13.5px var(--sans); cursor:pointer; box-shadow:0 6px 18px rgba(22,20,31,.25); }
   .upd i { width:8px; height:8px; border-radius:50%; background:#34d399; box-shadow:0 0 0 3px rgba(52,211,153,.25); }
@@ -695,6 +700,7 @@ async function home() {
             <button class="btn quiet small" id="fromdisk">${I.link} From disk</button>
             <span class="hintline">I'll propose a plan before I make anything</span>
             <span id="homemic"></span>
+            <div class="speed" role="group" aria-label="How to edit"><button type="button" data-speed="quick" title="A finished video in about five minutes">Quick</button><button type="button" data-speed="deep" title="The agent takes its time: research, more elaborate graphics (30–60 min)">Deep</button></div>
             <button class="btn" id="startbtn" disabled>Start editing <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
           </div>
         </div>
@@ -746,10 +752,16 @@ async function home() {
   ['dragenter', 'dragover'].forEach((ev) => stage.addEventListener(ev, (e) => { e.preventDefault(); stage.classList.add('hot'); }));
   ['dragleave', 'drop'].forEach((ev) => stage.addEventListener(ev, (e) => { e.preventDefault(); stage.classList.remove('hot'); if (ev === 'drop') add(e.dataTransfer.files); }));
   $('#fromdisk').onclick = () => askPath((p) => { picked.links.push(p); redraw(); });
+  let speed = 'quick';
+  try { speed = localStorage.getItem('elyps.speed') || 'quick'; } catch { /* private window */ }
+  const showSpeed = () => document.querySelectorAll('.speed [data-speed]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.speed === speed)));
+  document.querySelectorAll('.speed [data-speed]').forEach((b) => b.onclick = () => { speed = b.dataset.speed; try { localStorage.setItem('elyps.speed', speed); } catch { /* private window */ } showSpeed(); });
+  showSpeed();
   brief.oninput = () => { autosize(brief); redraw(); };
   brief.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!start.disabled) start.click(); } };
   start.onclick = async () => {
     if (!(await api('/api/key')).present) return welcomeKey('You need a key before the editor can start.');
+    askToNotify();
     start.disabled = true; start.textContent = 'Starting…';
     try {
       const text = brief.value.trim();
@@ -760,7 +772,7 @@ async function home() {
       // The project exists now: open it even if the job can't start, and say why there.
       let problem = null;
       if (media.some((m) => m.kind === 'video')) {
-        try { await api(`/api/projects/${p.id}/produce`, { method: 'POST', body: JSON.stringify({ prompt: text, mode }) }); }
+        try { await api(`/api/projects/${p.id}/produce`, { method: 'POST', body: JSON.stringify({ prompt: text, mode, speed }) }); }
         catch (err) { problem = err.message; }
       }
       await go('project', p.id);
@@ -1034,6 +1046,7 @@ async function chat(p, jobs) {
       if (e.kind === 'status') {
         if (/^• /.test(t)) { count++; return step(t.slice(2), t); }   // the plan-first steps
         if (/^Plan approved/.test(t)) { close(); return note(t); }
+        if (/^First cut ready/.test(t)) { close(); note(t); if (live) notify('Your first cut is ready', 'Watch it now — the lead agent is checking it.'); return showResult(); }
         if (/Worker (started|finished)|Final render|Revising/.test(t)) note(t.replace(/\s*\(pid[^)]*\)/, ''));
         return;
       }
@@ -1097,8 +1110,10 @@ async function chat(p, jobs) {
   const showResult = async () => {
     const files = await api(`/api/jobs/${job.id}/outputs`).catch(() => []);
     const mp4 = files.find((f) => f.path === 'out/episode.mp4');
-    if (!mp4 || $('#resultCard')) return;
+    if (!mp4) return;
     const url = `/api/jobs/${job.id}/files/${mp4.path}?v=${Date.now()}`;
+    const shown = $('#resultCard video');
+    if (shown) { if (shown.paused) { shown.src = url; } return; }   // the improved cut replaces the first
     const card = h(`<div class="msg" id="resultCard"><div class="avatar">${I.bot}</div><div class="result"><b>Here's the cut.</b>
       <video controls src="${url}"></video>
       <div class="row"><button class="btn small" id="here">${I.pencil} Change something here</button><a class="btn quiet small" href="${url}" download="video.mp4">Download MP4</a></div></div></div>`);
@@ -1114,6 +1129,7 @@ async function chat(p, jobs) {
     const old = $('#gateCard');
     if (!g) { if (old) old.remove(); gate = null; setComposer(); return; }
     if (gate && gate.n === g.n) return;
+    if (live) notify(/plan|beat/i.test(g.title || '') || g.type === 'beats' ? 'Your plan is ready' : 'Elyps has a question', 'It needs your answer to carry on.');
     gate = g; r.close(); if (old) old.remove();
     const card = h(`<div class="msg" id="gateCard"><div class="avatar">${I.bot}</div><div class="ask"><div class="ask-head"><b>${esc(g.title || 'I need your input')}</b><span class="pill">${g.type === 'beats' || /plan|beat/i.test(g.title || '') ? 'Needs your approval' : 'Needs your answer'}</span></div>
       ${g.body ? `<div class="plan prose">${planHtml(g.body)}</div>` : ''}${g.url ? `<iframe src="/api/jobs/${job.id}/files/${g.url}"></iframe>` : ''}
@@ -1123,7 +1139,7 @@ async function chat(p, jobs) {
   };
   S.es = new EventSource(`/api/jobs/${job.id}/events`);
   S.es.onmessage = (ev) => r.on(JSON.parse(ev.data));
-  let first = true;
+  let first = true, live = false;
   S.es.addEventListener('state', (ev) => {
     const s = JSON.parse(ev.data);
     if (first) { first = false; if (s.status !== 'running' && s.status !== 'queued') { r.close(); showResult(); sc.scrollTop = sc.scrollHeight; } }
@@ -1132,10 +1148,14 @@ async function chat(p, jobs) {
     if (s.status && s.status !== status) {
       status = s.status;
       $('#stop').hidden = status !== 'running';
-      if (status !== 'running' && status !== 'queued') { r.close(); showResult(); drawTimeline(); }
+      if (status !== 'running' && status !== 'queued') {
+        r.close(); showResult(); drawTimeline();
+        if (live) notify(status === 'done' ? 'Your video is ready' : status === 'cancelled' ? 'Edit stopped' : 'The edit stopped', status === 'done' ? p.name : 'Open Elyps to see what happened.', status === 'done' ? 'ok' : 'bad');
+      }
       setComposer();
     }
     drawGate(s.gate);
+    live = true;   // from here on, changes are news: notify
   });
   $('#stop').onclick = () => api(`/api/jobs/${job.id}/cancel`, { method: 'POST' });
   setComposer();
@@ -1209,6 +1229,40 @@ async function usage() {
 
 // Desktop boots straight in; Elyps Pro (which answers /api/config) signs in first.
 // (after every script has run, so pro.js is in place)
+// ---------- notifications: a soft chime, and a system notification when
+// Elyps isn't the window in front. The plan needs approval, the first cut
+// is ready, the video is done, or an edit stopped.
+let actx = null;
+function chime(kind) {
+  try { if (localStorage.getItem('elyps.sound') === 'off') return; } catch { /* private window */ }
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    const t = actx.currentTime;
+    (kind === 'bad' ? [392, 311] : [659, 880]).forEach((f, i) => {
+      const o = actx.createOscillator(), g = actx.createGain(), at = t + i * 0.13;
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(0.045, at + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, at + 0.6);
+      o.connect(g).connect(actx.destination); o.start(at); o.stop(at + 0.65);
+    });
+  } catch { /* no audio */ }
+}
+function notify(title, body, kind) {
+  chime(kind);
+  if (document.visibilityState === 'visible' && document.hasFocus()) return;
+  try {
+    if (window.Notification && Notification.permission === 'granted') {
+      const n = new Notification(title, { body, tag: 'elyps', icon: document.querySelector('link[rel="icon"]')?.href });
+      n.onclick = () => { window.focus(); n.close(); };
+    }
+  } catch { /* not allowed here */ }
+}
+// Asked once, when they start their first edit (a click, so the browser allows it).
+function askToNotify() {
+  try { if (window.Notification && Notification.permission === 'default') Notification.requestPermission(); } catch { /* ok */ }
+  try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); } catch { /* ok */ }
+}
+
 // Desktop: a button top right when a newer Elyps is out. One click if the
 // updater helper is installed; otherwise the command to run.
 async function checkUpdate() {

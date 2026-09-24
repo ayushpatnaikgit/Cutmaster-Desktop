@@ -152,9 +152,11 @@ const Footage: React.FC = () => {
         </Sequence>
       ))}
       <Speaker />
-      <Sequence from={src(episode.lowerThird.atSource)} durationInFrames={Math.round(episode.lowerThird.seconds * FPS)} layout="none">
-        <LowerThird />
-      </Sequence>
+      {episode.speaker && episode.lowerThird.seconds > 0 ? (
+        <Sequence from={src(episode.lowerThird.atSource)} durationInFrames={Math.round(episode.lowerThird.seconds * FPS)} layout="none">
+          <LowerThird />
+        </Sequence>
+      ) : null}
       {CAPTIONS ? <Captions /> : null}
       <AbsoluteFill style={{ background: BG, opacity: veil }} />
     </AbsoluteFill>

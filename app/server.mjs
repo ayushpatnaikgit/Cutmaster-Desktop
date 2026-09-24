@@ -272,6 +272,7 @@ app.post('/api/projects/:id/produce', async (req, res) => {
     prompt: req.body.prompt || project.notes || '',
     speaker: project.speaker, org: project.org, title: project.title,
     mode: ['interview', 'short', 'podcast', 'talk', 'product'].includes(req.body.mode) ? req.body.mode : (project.mode || 'interview'),
+    speed: req.body.speed === 'deep' ? 'deep' : 'quick',
     driver: req.body.driver || 'openhands',
     model: req.body.model || getModels().agent,
     models: { ...getModels(), ...(req.body.model ? { agent: req.body.model } : {}) },

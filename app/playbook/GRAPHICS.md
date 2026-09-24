@@ -129,7 +129,8 @@ Prefer illustrations **built in code**, so every part of them can move:
 ## Work fast
 
 The whole video waits for the slowest graphic, so aim to finish in about
-**15 steps**:
+**15 steps**. **At most one minute (three steps) looking around** — then
+start writing your file; everything you need is on this page and in your brief.
 
 1. Your brief has the words, timings, numbers and assets. Don't search the
    web, don't browse the workspace, don't re-read the transcript beyond your
