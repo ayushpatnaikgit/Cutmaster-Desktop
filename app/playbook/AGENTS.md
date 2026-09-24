@@ -124,24 +124,42 @@ set, so they build side by side while you do the music and the rest.
 Give each task a short description naming the graphic ("CO2 chart",
 "Satellite reveal") — the person sees it in the app. Up to six at a time.
 When they report back: `node scripts/export-clips.mjs` (it lists broken files
-and overlaps), look at a still of each yourself, send a subagent back with
-specific notes if one isn't good enough, then render everything.
+and overlaps), then look at the stills the subagent already rendered — all of
+them in one call: `python3 scripts/look.py review/<key>/*.png`. If something a
+viewer would notice is wrong (overlap, cut-off text, an empty column, a wrong
+fact), send that subagent back with specific notes — **don't edit its clip
+yourself**; that's slower and costlier than the specialist. If it's fine, move
+on: polishing details nobody will notice holds up the whole video. Then render
+everything.
 
 Don't delegate what needs the whole picture: the plan, the edit, the final
 render, or talking to the person.
 
 ## 4. Look at your own work
 
-You can't judge a frame you haven't seen. For every graphic:
+You can't judge a frame you haven't seen. For a graphic you made yourself:
 
-1. Render a still at its busiest moment:
-   `node scripts/render-html.mjs <scene> --stills 6 --outdir review/`
-2. Look at it:
-   `python3 scripts/look.py review/<scene>_6.png "Is this frame well composed? What looks empty, cramped, overlapping, off-brand or hard to read?"`
-3. Fix what it tells you, and look again. Two passes is normal.
+1. Render stills at its key moments:
+   `node scripts/render-html.mjs <scene> --stills 2,6 --outdir review/`
+2. Look at them in one call:
+   `python3 scripts/look.py review/<scene>_*.png`
+3. Fix what a viewer would notice, and look once more if you changed something.
 
-Do the same for the final cut: sample frames across it with ffmpeg and look at
-them before you call it done.
+Do the same for the final cut: sample 4–5 frames across it with ffmpeg, look
+at them in **one** `look.py` call, fix only real problems (a caption over a
+face, a graphic cut off, a black frame), and deliver.
+
+### The commands you need — no need to read their source
+
+| What | Command |
+|---|---|
+| Words and times | `python3 scripts/read-transcript.py --from 60 --to 90` · `python3 scripts/find-words.py "phrase"` |
+| Check clips, write the captions | `node scripts/export-clips.mjs` |
+| Stills of one clip | `node scripts/render-html.mjs <key> --stills 1,4,8 --outdir review/<key>` |
+| Look at stills | `python3 scripts/look.py a.png b.png … ["question"]` |
+| Render one clip / all clips | `./scripts/render-all.sh <key>` · `./scripts/render-all.sh` |
+| Final video (after all clips are rendered) | `./scripts/run-long.sh final ./scripts/render-final.sh out/episode.mp4` then `./scripts/check-long.sh final` |
+| A frame of the final | `ffmpeg -v error -ss 12 -i out/episode.mp4 -frames:v 1 review/final_12.png` |
 
 ## 5. Long steps
 
