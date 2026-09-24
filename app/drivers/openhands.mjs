@@ -8,7 +8,7 @@ import { ROOT } from '../lib/store.mjs';
 import { getModels, modelEnv } from '../lib/models.mjs';
 import { agentEnv, asAgent } from '../lib/sandbox.mjs';
 
-export function runOpenHands({ job, work, jobPath, taskFile = 'TASK.md', token, log }) {
+export function runOpenHands({ job, work, jobPath, taskFile = 'TASK.md', token, log, env: extraEnv = {} }) {
   // In Docker OpenHands is installed into the image's Python; locally, into .venv-oh.
   const python = process.env.OPENHANDS_PYTHON || path.join(ROOT, '.venv-oh', 'bin', 'python');
   if (python.includes(path.sep) && !fs.existsSync(python)) {
@@ -28,6 +28,7 @@ export function runOpenHands({ job, work, jobPath, taskFile = 'TASK.md', token, 
         OH_STATE_DIR: path.join(jobPath || path.dirname(work), 'openhands-state'),
         OPENHANDS_SUPPRESS_BANNER: '1',
         PYTHONUNBUFFERED: '1',
+        ...extraEnv,
       }),
     });
     const relay = (chunk) => String(chunk).split('\n').filter(Boolean).forEach((line) => {

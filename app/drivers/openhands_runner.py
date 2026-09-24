@@ -48,13 +48,17 @@ for name, cls in (("TerminalTool", TerminalTool), ("FileEditorTool", FileEditorT
 
 # The key never reaches this process: api_key is a job token, and base_url is
 # the Elyps app's local proxy, which swaps in the real key.
-llm = LLM(
-    model=f"gemini/{model}",
-    api_key=api_key,
-    base_url=os.environ.get("GEMINI_BASE_URL") or None,
-    temperature=0.4,
-    usage_id="episode",
-)
+def make_llm(name, usage_id):
+    """Gemini models speak Google's format; others (DeepSeek on Vertex, in
+    Elyps Pro) go through the app's OpenAI-compatible proxy route."""
+    if name.startswith("deepseek") and os.environ.get("ELYPS_OPENAI_BASE_URL"):
+        return LLM(model=f"openai/{name}", api_key=api_key, base_url=os.environ["ELYPS_OPENAI_BASE_URL"],
+                   temperature=0.4, usage_id=usage_id)
+    return LLM(model=f"gemini/{name}", api_key=api_key, base_url=os.environ.get("GEMINI_BASE_URL") or None,
+               temperature=0.4, usage_id=usage_id)
+
+
+llm = make_llm(model, "episode")
 
 # Renders and transcodes are silent for minutes; the default 30s
 # "no output change" timeout makes the agent think they stalled.
@@ -105,12 +109,15 @@ def _subagent_factory(prompt, which):
     def factory(sub_llm):
         if which == "quick":
             # a cheaper model with light thinking, still through the key proxy
-            sub_llm = sub_llm.model_copy(update={"model": f"gemini/{QUICK_MODEL}", "reasoning_effort": "low", "usage_id": "quick"})
+            sub_llm = make_llm(QUICK_MODEL, "quick").model_copy(update={"reasoning_effort": "low"})
         return Agent(
             llm=sub_llm,
             tools=[TERMINAL, Tool(name="FileEditorTool")],
             agent_context=AgentContext(system_message_suffix=prompt),
-            condenser=default_condenser(sub_llm.model_copy(update={"usage_id": "condenser"})),
+            # like the lead: keep each step's context small (the default waits
+            # for 240 events, by which point a subagent re-sends ~90K per step)
+            condenser=LLMSummarizingCondenser(llm=sub_llm.model_copy(update={"usage_id": "condenser"}),
+                                              max_size=80, max_tokens=50000, keep_first=3),
         )
     return factory
 
@@ -123,7 +130,10 @@ for kind, (desc, prompt, max_iter, which) in SUBAGENTS.items():
     except ValueError:  # already registered
         pass
 
-agent = Agent(
+# A revision of one graphic skips the lead: the worker runs the right
+# specialist directly (quick-edit or graphics) and re-renders with scripts.
+DIRECT = os.environ.get("ELYPS_DIRECT", "")
+agent = _subagent_factory(SUBAGENTS[DIRECT][1], SUBAGENTS[DIRECT][3])(llm) if DIRECT in SUBAGENTS else Agent(
     llm=llm,
     tools=[TERMINAL, Tool(name="FileEditorTool"), Tool(name="TaskTrackerTool"), Tool(name=TaskToolSet.name)],
     # several `task` calls in one step run at once: that is how graphics are
@@ -206,7 +216,7 @@ conversation = Conversation(
 task_file = os.environ.get("TASK_FILE", "TASK.md")
 task = (work / task_file).read_text()
 conversation.send_message(
-    SYSTEM + "\n\nYour workspace is the current directory. The request:\n\n" + task
+    (task if DIRECT else SYSTEM + "\n\nYour workspace is the current directory. The request:\n\n" + task)
 )
 # Messages the person sends while the agent works (the app writes them to the
 # job's inbox). send_message is safe to call while run() is going: the agent
@@ -268,6 +278,8 @@ while pending and time.time() < deadline:
 if pending:
     emit("status", f"Gave up waiting after 3 hours on: {', '.join(pending)}")
 
+if DIRECT:  # the worker renders after a direct edit
+    sys.exit(0)
 done = (work / "out" / "episode.mp4").exists()
 emit("status", f"episode.mp4 present: {done}")
 sys.exit(0 if done else 2)

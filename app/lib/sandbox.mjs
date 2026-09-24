@@ -15,7 +15,9 @@ import { execFile } from 'node:child_process';
 
 export const AGENT_USER = process.env.AGENT_USER || '';
 export const newJobToken = () => `cmjob_${crypto.randomBytes(24).toString('hex')}`;
-export const proxyBase = () => `http://127.0.0.1:${process.env.PORT || 4322}/gemini`;
+// Desktop: the app's own local proxy. Elyps Pro: the app's proxy over HTTPS
+// (ELYPS_PROXY_BASE, set by pro/job-entry.mjs), with the same per-job token.
+export const proxyBase = () => (process.env.ELYPS_PROXY_BASE ? `${process.env.ELYPS_PROXY_BASE}/gemini` : `http://127.0.0.1:${process.env.PORT || 4322}/gemini`);
 
 /** Environment for anything the agent runs: the job token instead of the key. */
 export function agentEnv(base, token, extra = {}) {
